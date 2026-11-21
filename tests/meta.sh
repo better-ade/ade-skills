@@ -122,5 +122,6 @@ fresh; mut skills/discovery/template.md "## Data boundaries
 
 - <Data that must stay in the customer's environment>"; expect "'## Data boundaries' lacks the placeholder note" "a discovery placeholder without the no-credential note"
 fresh; mut skills/discovery/SKILL.md "gitleaks dir docs/customer/constraints.md" "a secret scan"; expect "does not run gitleaks" "discovery without the gitleaks step"
+[ -d plugins/fde/skills/handover ] && { fresh; mut skills/handover/SKILL.md "a missing or empty section means no export." "ask first."; expect "handover/SKILL.md: '## Ask first' lacks the export bullet" "a loosened export bullet in a delivery skill"; }
 
 [ $rc = 0 ] || exit 1

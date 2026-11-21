@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0
+
+- `fde` plugin 0.2.0, part 2 (F1b): `design-doc` (wraps `bmad-architecture`), `workflow` (current and future Mermaid
+  maps with step tables), `status-report` (from the folder's tickets and journal only) and `handover`; design and
+  handover templates keep secrets to names and locations.
+- The four delivery skills carry F1a's hardened rules: exact export bullet (approved destinations only), provider,
+  slug, folder and quoting lines, and the isolation line.
+
 ## 0.4.0
 
 - `fde` plugin, part 1 (F1a): `discovery` writes `docs/customer/constraints.md`; `proposal`, `sow` and

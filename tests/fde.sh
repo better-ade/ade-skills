@@ -16,12 +16,17 @@ def section(s, h):
 BLANK = r"\[\[TO FILL:[^\]]*\]\]"
 
 COMMERCIAL = ["proposal", "sow", "change-request"]
-SKILLS = ["discovery"] + COMMERCIAL
+DELIVERY = ["design-doc", "workflow", "status-report", "handover"]
+SKILLS = ["discovery"] + COMMERCIAL + DELIVERY
 HEADS = {
     "discovery": ["Goals", "Stakeholders", "Current state", "Constraints", "Approved AI providers",
                   "Approved tools and destinations", "Data boundaries"],
     "proposal": ["Pricing", "Timeline"], "sow": ["Acceptance criteria", "Pricing", "Timeline", "Change process", "Terms"],
     "change-request": ["Pricing", "Timeline"],
+    "design-doc": ["Context", "Diagram", "Integrations", "Security", "Rollout", "Secrets"],
+    "workflow": ["Current process", "Future process"],
+    "status-report": ["Done", "Next", "Risks", "Decisions needed"],
+    "handover": ["Runbook", "Architecture summary", "Operate and support", "Open issues", "Secrets"],
 }
 FIRST = "Read `<folder>/docs/customer/constraints.md` first. If it is missing, stop and point the user to `discovery`."
 # Exact lines every fde SKILL.md carries (as a line or a bullet).
@@ -37,7 +42,7 @@ ASK = {
     "export": "- Exporting the document (PDF, Word, a wiki, another tool): only to a target listed in `docs/customer/constraints.md`, section `## Approved tools and destinations`, and ask first; a missing or empty section means no export.",
     "outside": "- Writing outside the named folder: ask first.",
 }
-ASK_FOR = {n: ["send", "sign", "export", "outside"] for n in SKILLS}
+ASK_FOR = {n: ["send", "export", "outside"] + ([] if n in DELIVERY else ["sign"]) for n in SKILLS}
 MONTH = r"jan(uary)?|feb(ruary)?|mar(ch)?|apr(il)?|may|june?|july?|aug(ust)?|sep(t(ember)?)?|oct(ober)?|nov(ember)?|dec(ember)?"
 NUM = r"\d+|one|two|three|four|five|six|seven|eight|nine|ten|thirty|sixty|ninety"
 LEAKS = [
@@ -102,6 +107,20 @@ for name in SKILLS:
                 bad.append(f"{rel(t)}: '## {h}' must hold only [[TO FILL: ...]] blanks")
     if name == "change-request" and tm and CR not in (section(tm, "Change") or ""):
         bad.append(f"{rel(t)}: '## Change' does not say '{CR}'")
+# F1b AC2-AC4: workflow maps in Mermaid with step tables; status-report reads only the folder; secrets sections.
+wt = os.path.join(P, "skills/workflow/template.md")
+wf = open(wt).read() if os.path.exists(wt) else ""
+for h in ["Current process", "Future process"]:
+    sec = section(wf, h) or ""
+    if wf and ("```mermaid" not in sec or not re.search(r"^\|.*\|$", sec, re.M)): bad.append(f"plugins/fde/skills/workflow/template.md: '## {h}' lacks a Mermaid map and a step table")
+sr = os.path.join(P, "skills/status-report/SKILL.md")
+if os.path.exists(sr) and "Read only the named folder" not in open(sr).read(): bad.append("plugins/fde/skills/status-report/SKILL.md: does not say it reads only the named folder")
+for name in ["design-doc", "handover"]:
+    t = os.path.join(P, "skills", name, "template.md")
+    if os.path.exists(t) and "names and locations only" not in (section(open(t).read(), "Secrets") or "").lower(): bad.append(f"{rel(t)}: '## Secrets' does not say names and locations only")
+# F1b AC6: the release.
+if os.path.exists(pj) and json.load(open(pj)).get("version") == "0.1.0": bad.append(f"{rel(pj)}: version not bumped for part 2")
+if "`status-report`" not in open(os.path.join(R, "CHANGELOG.md")).read(): bad.append("CHANGELOG.md does not record the fde part 2 release")
 # F1a AC5: sow acceptance criteria, one per line, each provable.
 st = os.path.join(P, "skills/sow/template.md")
 ac = ((section(open(st).read(), "Acceptance criteria") if os.path.exists(st) else "") or "").lower()
