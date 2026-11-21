@@ -38,7 +38,7 @@ One criterion per line, each provable by a test or recorded evidence (a test nam
 
 ## Change process
 
-Changes to scope, price or timeline go through a change request (the `change-request` skill) that both parties approve.
+[[TO FILL: change process, from the owner's contract]]
 
 ## Terms
 

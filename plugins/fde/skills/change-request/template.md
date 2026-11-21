@@ -2,7 +2,7 @@
 
 ## Change
 
-<What is asked for, in the requester's words, and who asked.>
+<What is asked for: the requested change, without prices or dates, and who asked. Quote any price or date as [[TO FILL: customer asked: ...]].>
 
 ## Reason
 
