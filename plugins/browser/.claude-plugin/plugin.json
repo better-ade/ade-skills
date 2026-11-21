@@ -1,1 +1,1 @@
-{ "name": "browser", "description": "Browser automation for analysts and QA: Claude in Chrome for signed-in tools, Playwright MCP for headless runs.", "version": "0.1.0" }
+{ "name": "browser", "description": "Browser automation for analysts and QA: Claude in Chrome for signed-in tools, Playwright MCP for headless runs.", "version": "0.2.0" }

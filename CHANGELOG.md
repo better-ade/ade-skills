@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- `browser` plugin 0.2.0: the `browse` skill defers to an ADE hub folder's own `playwright` MCP server
+  (`<hub>/bin/browser run <folder>`) when the folder has one, and describes server profile mode (isolated by default,
+  a per-folder profile the owner turns on and signs in to; the owner's word over Telegram on a server).
+
 ## 0.5.0
 
 - `fde` plugin 0.2.0, part 2 (F1b): `design-doc` (wraps `bmad-architecture`), `workflow` (current and future Mermaid
