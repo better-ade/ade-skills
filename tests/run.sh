@@ -27,9 +27,10 @@ for root, _, files in os.walk("plugins"):
 print("\n".join("FAIL: " + b for b in bad)) if bad else None
 sys.exit(1 if bad else 0)
 PY
+bash tests/ade.sh || rc=1
 if command -v claude >/dev/null; then
   claude plugin validate . >/dev/null 2>&1 || fail "claude plugin validate . (run it for details)"
-  for p in plugins/git plugins/browser; do claude plugin validate "$p" >/dev/null 2>&1 || fail "claude plugin validate $p"; done
+  for p in plugins/git plugins/browser plugins/ade; do claude plugin validate "$p" >/dev/null 2>&1 || fail "claude plugin validate $p"; done
 else echo "note: claude not installed, manifest validation skipped"; fi
 if command -v gitleaks >/dev/null; then gitleaks dir . --no-banner --redact --log-level warn >/dev/null || fail "gitleaks found a secret"
 else echo "note: gitleaks not installed, secret scan skipped"; fi

@@ -8,6 +8,7 @@ request. Roles live in [ade-method](https://github.com/better-ade/ade-method) an
 |---|---|
 | `git` | Branch, commit and PR conventions: commit as the user, no AI attribution, verify before pushing, ask before push or merge |
 | `browser` | Claude in Chrome for signed-in tools, Playwright MCP (headless, isolated) for public pages and tests; read-only by default |
+| `ade` | Slash commands for the `ade` CLI (status, work, dispatch, notify, specialists, plugins); risky ones ask the owner |
 
 ## Install
 
@@ -15,6 +16,7 @@ request. Roles live in [ade-method](https://github.com/better-ade/ade-method) an
 /plugin marketplace add better-ade/ade-skills
 /plugin install git@ade-skills
 /plugin install browser@ade-skills
+/plugin install ade@ade-skills
 ```
 
 A project can offer them to teammates in its committed `.claude/settings.json` (`extraKnownMarketplaces`,
