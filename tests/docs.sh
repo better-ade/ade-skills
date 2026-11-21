@@ -14,7 +14,8 @@ for p in json.load(open(os.path.join(R, ".claude-plugin/marketplace.json")))["pl
     sk = os.path.join(root, "skills")
     for name in sorted(os.listdir(sk)) if os.path.isdir(sk) else []:
         f = os.path.join(sk, name, "SKILL.md")
-        if not os.path.exists(f): continue
+        if not os.path.isdir(os.path.join(sk, name)): continue
+        if not os.path.exists(f): bad.append(f"{os.path.relpath(os.path.join(sk, name), R)}: no SKILL.md"); continue
         have = {re.sub(r"^\s*(- )?", "", l).rstrip() for l in open(f).read().splitlines()}
         for l in LINES:
             if l not in have: bad.append(f"{os.path.relpath(f, R)}: lacks the line '{l}'")

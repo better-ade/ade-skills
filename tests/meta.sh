@@ -56,6 +56,9 @@ printf '## Summary\n\n- a point\n  Source: x\n- a point with no source\n' > "$D/
 bash "$R/tests/docs.sh" "$D" >/dev/null 2>&1 && fail "docs.sh passed a template bullet with no Source: line"
 printf '## Summary\n\n- a point\n  Source: x\n' > "$D/plugins/doc/skills/s/template.md"
 bash "$R/tests/docs.sh" "$D" >/dev/null 2>&1 || fail "docs.sh failed a template whose bullets all have Source: lines"
+mkdir -p "$D/plugins/doc/skills/empty"
+bash "$R/tests/docs.sh" "$D" 2>&1 | grep -q "skills/empty: no SKILL.md" || fail "docs.sh passed a skills/ directory with no SKILL.md"
+rmdir "$D/plugins/doc/skills/empty"
 
 # F1a AC3: fde.sh catches a price, a date or a duration in a commercial template.
 F="$T/fde"; mkdir -p "$F/plugins/fde/skills/proposal"; cp CHANGELOG.md "$F/"; mkdir -p "$F/.claude-plugin"
