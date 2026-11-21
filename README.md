@@ -10,6 +10,7 @@ request. Roles live in [ade-method](https://github.com/better-ade/ade-method) an
 | `browser` | Claude in Chrome for signed-in tools, Playwright MCP (headless, isolated) for public pages and tests; read-only by default |
 | `ade` | Slash commands for the `ade` CLI (status, work, dispatch, notify, specialists, plugins); risky ones ask the owner |
 | `notes` | Meeting notes, summaries, action items, digests and captures in the named hub folder, each point with its source |
+| `fde` | Forward deployed engineering documents (discovery, proposal, SOW, change request) from the customer's constraints; prices, dates and terms left blank |
 
 ## Install
 
@@ -19,6 +20,7 @@ request. Roles live in [ade-method](https://github.com/better-ade/ade-method) an
 /plugin install browser@ade-skills
 /plugin install ade@ade-skills
 /plugin install notes@ade-skills
+/plugin install fde@ade-skills
 ```
 
 A project can offer them to teammates in its committed `.claude/settings.json` (`extraKnownMarketplaces`,

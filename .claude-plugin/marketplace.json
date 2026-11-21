@@ -6,6 +6,7 @@
     { "name": "git", "source": "./plugins/git", "description": "Branch, commit and pull-request conventions: commit as the user, no AI attribution." },
     { "name": "browser", "source": "./plugins/browser", "description": "Browser automation (Claude in Chrome, Playwright MCP) with read-only defaults and ask-first rules." },
     { "name": "ade", "source": "./plugins/ade", "description": "Drive ADE from inside Claude Code through the ade CLI; starting agents and messaging stay behind the owner's prompt." },
-    { "name": "notes", "source": "./plugins/notes", "description": "Meeting notes, summaries, action items, digests and captures, written into the named hub folder." }
+    { "name": "notes", "source": "./plugins/notes", "description": "Meeting notes, summaries, action items, digests and captures, written into the named hub folder." },
+    { "name": "fde", "source": "./plugins/fde", "description": "Forward deployed engineering documents drafted from the customer's constraints; prices, dates and terms left blank." }
   ]
 }

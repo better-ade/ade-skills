@@ -24,6 +24,7 @@ of the digest.
 - Write only inside the named folder.
 - Never write a secret; refer to it by name or location.
 - Keep personal data to what the note needs.
+- Read only inside the named folder; never copy content from another customer's folder.
 
 ## Ask first
 
