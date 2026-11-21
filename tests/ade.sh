@@ -72,8 +72,7 @@ if not any(p["name"] == "ade" and p["source"] == "./plugins/ade" for p in m["plu
 v = open("VERSION").read().strip()
 if f"\n## {v}\n" not in open("CHANGELOG.md").read(): bad.append(f"CHANGELOG.md has no '## {v}' entry")
 if v == "0.1.0": bad.append("VERSION still 0.1.0: the ade release is not recorded")
-cl = section(open("CHANGELOG.md").read(), v)
-if "ade" not in cl: bad.append(f"CHANGELOG.md '## {v}' does not mention the ade plugin")
+if "`ade` plugin" not in open("CHANGELOG.md").read(): bad.append("CHANGELOG.md does not record the ade plugin release")
 
 print("\n".join("FAIL: " + b for b in bad)) if bad else None
 sys.exit(1 if bad else 0)
