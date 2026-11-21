@@ -18,6 +18,7 @@ want = {
     "work": ("ade work", 2), "dispatch": ("ade dispatch", 1), "notify": ("ade notify", 2),
     "agent-add": ("ade agent add", 1), "skills-add": ("ade skills add", 1),
 }
+ESCAPE = "Before running it, escape every `\"`, `$` and backtick in each argument with a backslash; if an argument contains a newline, run nothing and say why."
 changes_state = {"work", "dispatch", "notify", "agent-add", "skills-add"}
 for name, (prefix, nargs) in want.items():
     f = f"{P}/commands/{name}.md"
@@ -25,6 +26,13 @@ for name, (prefix, nargs) in want.items():
     if not s: continue
     if not s.startswith("---\ndescription: "): bad.append(f"{f}: no front matter with description")
     lines = [l.strip() for l in s.splitlines() if re.match(r"^\s*ade\s", l)]
+    # One command runs; work.md shows two variants (with and without a role) so an empty role never becomes --role "".
+    variants = {"work": ['ade work "$1"', 'ade work --role "$2" "$1"']}
+    if name in variants:
+        if sorted(lines) != sorted(variants[name]): bad.append(f"{f}: command lines {lines}, want exactly {variants[name]}")
+        if "Only when a role was given" not in s: bad.append(f"{f}: does not say the --role variant is only for a given role")
+        if ESCAPE not in s: bad.append(f"{f}: lacks the argument rule '{ESCAPE}'")
+        continue
     if len(lines) != 1: bad.append(f"{f}: {len(lines)} 'ade ...' command lines, want exactly 1"); continue
     line = lines[0]
     if not (line == prefix or line.startswith(prefix + " ")): bad.append(f"{f}: runs '{line}', want '{prefix} ...'"); continue
@@ -32,6 +40,8 @@ for name, (prefix, nargs) in want.items():
     args = re.findall(r'"[^"]*"', rest)
     if re.sub(r'"[^"]*"|--[a-z-]+', "", rest).strip(): bad.append(f"{f}: unquoted argument in '{line}'")
     if len(args) != nargs: bad.append(f"{f}: {len(args)} quoted arguments in '{line}', want {nargs}")
+    if nargs and ESCAPE not in s: bad.append(f"{f}: lacks the argument rule '{ESCAPE}'")
+    if '--role ""' in s: bad.append(f"{f}: can produce --role \"\"")
     if "--approve" in s or "dangerously-skip-permissions" in s: bad.append(f"{f}: mentions --approve or skipping permissions")
     if name in changes_state and re.search(r"^allowed-tools:", s, re.M):
         bad.append(f"{f}: changes state, so it must not pre-allow tools (the owner's prompt decides)")
@@ -55,7 +65,7 @@ else:
         perm = json.loads(blocks[0]).get("permissions", {})
         rules = {
             "allow": ["Bash(ade status*)", "Bash(ade doctor*)", "Bash(ade agent list*)"],
-            "ask": ["Bash(ade work*)", "Bash(ade dispatch*)", "Bash(ade chat*)", "Bash(ade notify*)"],
+            "ask": ["Bash(ade work*)", "Bash(ade dispatch*)", "Bash(ade chat*)", "Bash(ade notify*)", "Bash(ade agent add*)", "Bash(ade skills add*)"],
             "deny": ["Bash(*--dangerously-skip-permissions*)"],
         }
         for k, rs in rules.items():
@@ -63,7 +73,7 @@ else:
                 if r not in perm.get(k, []): bad.append(f"{P}/README.md: permissions.{k} lacks {r}")
         for k in ("allow",):
             for r in perm.get(k, []):
-                if any(w in r for w in ("work", "dispatch", "chat", "notify")): bad.append(f"{P}/README.md: {r} must not be allowed")
+                if any(w in r for w in ("work", "dispatch", "chat", "notify", "agent add", "skills add")): bad.append(f"{P}/README.md: {r} must not be allowed")
     except ValueError as e: bad.append(f"{P}/README.md: permission block is not valid JSON ({e})")
 
 # AC5: marketplace lists ade; VERSION has a CHANGELOG entry.
