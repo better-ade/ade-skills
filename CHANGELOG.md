@@ -5,6 +5,8 @@
 - `fde` plugin 0.2.0, part 2 (F1b): `design-doc` (wraps `bmad-architecture`), `workflow` (current and future Mermaid
   maps with step tables), `status-report` (from the folder's tickets and journal only) and `handover`; design and
   handover templates keep secrets to names and locations.
+- The four delivery skills carry F1a's hardened rules: exact export bullet (approved destinations only), provider,
+  slug, folder and quoting lines, and the isolation line.
 
 ## 0.4.0
 
@@ -12,6 +14,11 @@
   `change-request` draft from it with every price, date and legal term left as a `[[TO FILL: ...]]` blank.
 - `tests/fde.sh`: constraints first, no price, date or duration in the commercial templates, blanks in Pricing,
   Timeline and Terms, SOW acceptance criteria, ask-first rules; `tests/meta.sh` tests its leak patterns.
+- Review hardening: wider leak patterns (symbols, codes after numbers, word durations, quarters, payment terms,
+  slash and month-name dates), legal keywords outside blanks, Pricing, Terms and Change process hold only blanks,
+  constraints-first as the first line, exact Ask first bullets, the provider rule, `## Approved tools and
+  destinations`, gitleaks on `constraints.md`; a fifth convention line (read only inside the named folder) for every
+  document plugin (`notes` 0.1.1 carries it). `tests/meta.sh` has a negative case for each.
 
 ## 0.3.0
 
