@@ -15,11 +15,16 @@ def section(s, h):
     return m.group(1) if m else None
 
 COMMERCIAL = ["proposal", "sow", "change-request"]
-SKILLS = ["discovery"] + COMMERCIAL
+DELIVERY = ["design-doc", "workflow", "status-report", "handover"]
+SKILLS = ["discovery"] + COMMERCIAL + DELIVERY
 HEADS = {
     "discovery": ["Goals", "Stakeholders", "Current state", "Constraints", "Approved AI providers", "Data boundaries"],
     "proposal": ["Pricing", "Timeline"], "sow": ["Acceptance criteria", "Pricing", "Timeline", "Terms"],
     "change-request": ["Pricing", "Timeline"],
+    "design-doc": ["Context", "Diagram", "Integrations", "Security", "Rollout", "Secrets"],
+    "workflow": ["Current process", "Future process"],
+    "status-report": ["Done", "Next", "Risks", "Decisions needed"],
+    "handover": ["Runbook", "Architecture summary", "Operate and support", "Open issues", "Secrets"],
 }
 FIRST = "Read `<folder>/docs/customer/constraints.md` first. If it is missing, stop and point the user to `discovery`."
 LEAKS = [(r"[$€£]\s?\d", "a price"), (r"\b(USD|EUR|GBP|CAD|PHP)\s?\d", "a price"),
@@ -36,7 +41,7 @@ for name in SKILLS:
         if name == "discovery" and "docs/customer/constraints.md" not in s: bad.append(f"{rel(f)}: does not say it writes docs/customer/constraints.md")
         # AC6: Ask first names sending, sharing, signing, exporting; export only to an approved target.
         ask = (section(s, "Ask first") or "").lower()
-        for w in ["send", "shar", "sign", "export"]:
+        for w in ["send", "shar", "export"] + ([] if name in DELIVERY else ["sign"]):
             if w not in ask: bad.append(f"{rel(f)}: '## Ask first' does not name {w}ing a document")
         if not re.search(r"export\w*[^\n]*only[^\n]*(approve|constraints)", ask): bad.append(f"{rel(f)}: '## Ask first' does not limit export to a target the constraints approve")
     for h in HEADS[name]:
@@ -49,6 +54,19 @@ for name in SKILLS:
         # AC4: blanks in Pricing, Timeline and (sow) Terms.
         for h in ["Pricing", "Timeline"] + (["Terms"] if name == "sow" else []):
             if "[[TO FILL:" not in (section(tm, h) or ""): bad.append(f"{rel(t)}: '## {h}' has no [[TO FILL: ...]] blank")
+# F1b AC2-AC4: workflow maps in Mermaid with step tables; status-report reads only the folder; secrets sections.
+wf = read(os.path.join(P, "skills/workflow/template.md")) if os.path.isdir(os.path.join(P, "skills/workflow")) else ""
+for h in ["Current process", "Future process"]:
+    sec = section(wf, h) or ""
+    if wf and ("```mermaid" not in sec or not re.search(r"^\|.*\|$", sec, re.M)): bad.append(f"plugins/fde/skills/workflow/template.md: '## {h}' lacks a Mermaid map and a step table")
+sr = os.path.join(P, "skills/status-report/SKILL.md")
+if os.path.exists(sr) and "Read only the named folder" not in open(sr).read(): bad.append("plugins/fde/skills/status-report/SKILL.md: does not say it reads only the named folder")
+for name in ["design-doc", "handover"]:
+    t = os.path.join(P, "skills", name, "template.md")
+    if os.path.exists(t) and "names and locations only" not in (section(open(t).read(), "Secrets") or "").lower(): bad.append(f"{rel(t)}: '## Secrets' does not say names and locations only")
+# F1b AC6: the release.
+if os.path.exists(pj) and json.load(open(pj)).get("version") == "0.1.0": bad.append(f"{rel(pj)}: version not bumped for part 2")
+if "`status-report`" not in open(os.path.join(R, "CHANGELOG.md")).read(): bad.append("CHANGELOG.md does not record the fde part 2 release")
 # AC5: sow acceptance criteria, one per line, each provable.
 ac = (section(read(os.path.join(P, "skills/sow/template.md")) if os.path.exists(os.path.join(P, "skills/sow/template.md")) else "", "Acceptance criteria") or "").lower()
 if "one criterion per line" not in ac or not re.search(r"test or recorded evidence", ac):
