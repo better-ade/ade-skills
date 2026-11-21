@@ -57,4 +57,14 @@ bash "$R/tests/docs.sh" "$D" >/dev/null 2>&1 && fail "docs.sh passed a template 
 printf '## Summary\n\n- a point\n  Source: x\n' > "$D/plugins/doc/skills/s/template.md"
 bash "$R/tests/docs.sh" "$D" >/dev/null 2>&1 || fail "docs.sh failed a template whose bullets all have Source: lines"
 
+# F1a AC3: fde.sh catches a price, a date or a duration in a commercial template.
+F="$T/fde"; mkdir -p "$F/plugins/fde/skills/proposal"; cp CHANGELOG.md "$F/"; mkdir -p "$F/.claude-plugin"
+echo '{ "name": "f", "owner": { "name": "x" }, "plugins": [] }' > "$F/.claude-plugin/marketplace.json"
+for leak in 'Fee: $ 5,000' 'Fee: €5' 'Fee: £5' 'Fee: USD 900' 'Fee: PHP900' 'Start: 2027-01-04' 'Within 6 weeks' 'In 3days' 'For 2 months'; do
+  printf '## Pricing\n\n%s\n' "$leak" > "$F/plugins/fde/skills/proposal/template.md"
+  bash "$R/tests/fde.sh" "$F" 2>&1 | grep -q "proposal/template.md:3: a " || fail "fde.sh did not catch '$leak' in a proposal template"
+done
+printf '## Pricing\n\n[[TO FILL: the fee]]\n' > "$F/plugins/fde/skills/proposal/template.md"
+bash "$R/tests/fde.sh" "$F" 2>&1 | grep -q "proposal/template.md:[0-9]*: a " && fail "fde.sh flagged a template with only blanks"
+
 [ $rc = 0 ] || exit 1

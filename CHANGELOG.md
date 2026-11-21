@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0
+
+- `fde` plugin, part 1 (F1a): `discovery` writes `docs/customer/constraints.md`; `proposal`, `sow` and
+  `change-request` draft from it with every price, date and legal term left as a `[[TO FILL: ...]]` blank.
+- `tests/fde.sh`: constraints first, no price, date or duration in the commercial templates, blanks in Pricing,
+  Timeline and Terms, SOW acceptance criteria, ask-first rules; `tests/meta.sh` tests its leak patterns.
+
 ## 0.3.0
 
 - `notes` plugin (N1): `meeting-notes`, `summarize`, `action-items`, `digest`, `capture`, writing into the named folder.
