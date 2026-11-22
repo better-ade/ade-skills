@@ -14,6 +14,7 @@ request. Roles live in [ade-method](https://github.com/better-ade/ade-method) an
 | `clickup` | ClickUp's own hosted MCP server; the owner signs in through `/mcp`; a hook asks before any tool not on its read list |
 | `jira` | Atlassian's own hosted MCP server (Rovo MCP, v2) for Jira; the owner signs in through `/mcp`; a hook asks before any tool not on its read list |
 | `linear` | Linear's own hosted MCP server; the owner signs in through `/mcp`; a hook asks before any tool not on its read list |
+| `github` | GitHub's own hosted MCP server (story K1b, sign-in not working yet); a hook asks before any tool not on its read list |
 
 ## Install
 
@@ -27,9 +28,10 @@ request. Roles live in [ade-method](https://github.com/better-ade/ade-method) an
 /plugin install clickup@ade-skills
 /plugin install jira@ade-skills
 /plugin install linear@ade-skills
+/plugin install github@ade-skills
 ```
 
-The connector plugins (`clickup`, `jira`, `linear`) hold no credential: each owner signs in themselves through
+The connector plugins (`clickup`, `jira`, `linear`, `github`) hold no credential: each owner signs in themselves through
 `/mcp`. [docs/connectors.md](docs/connectors.md) gives each server's address, sign-in, sign-out, revocation and reach.
 
 A project can offer them to teammates in its committed `.claude/settings.json` (`extraKnownMarketplaces`,

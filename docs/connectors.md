@@ -131,15 +131,33 @@ In those setups, a change goes ahead only on the owner's word in the conversatio
   known `get_`, `list_` and `search_` tools; compare it with what `/mcp` shows after signing in. A missing name only
   asks; the owner check compares them.
 
-## GitHub
+## `github`
 
-GitHub is not shipped yet: its hosted server's sign-in does not work through `/mcp` without a credential set up
-outside this plugin, which would leave the server unguarded (story K1b). Work with GitHub through `gh` and git, under
-the `git` plugin's rules.
+- Server: `https://api.githubcopilot.com/mcp/`
+- Documented at: https://github.com/github/github-mcp-server/blob/main/docs/remote-server.md
+- Confirmed on the day: the address, yes: GitHub's page names it and it answers (`401`, OAuth challenge pointing to
+  GitHub's sign-in server). Transport: streamable HTTP. Signing in through `/mcp`: **not confirmed, and expected to
+  fail.** GitHub's sign-in server publishes no client registration (no `registration_endpoint`, no client ID metadata
+  documents), and GitHub's and Claude Code's own guides use a personal access token in a header. Claude Code then
+  reports "does not support dynamic client registration".
+- Sign in: run `/mcp`, pick `plugin:github:github`, choose Authenticate and sign in to GitHub in the browser. This is
+  why the plugin is not shipped (story K1b): the ways around it found so far are a server set up outside the plugin
+  (not guarded by this hook) or a token in Claude Code's environment (which the Bash tool inherits). Do not use either
+  to make this plugin work; story K1b decides.
+- Sign out: in `/mcp`, pick the server and choose Clear authentication, or run `claude mcp logout plugin:github:github`.
+- Revoke at the vendor: GitHub settings, Applications, Authorized OAuth Apps (or Authorized GitHub Apps), Revoke
+  (https://docs.github.com/en/apps/oauth-apps/using-oauth-apps/reviewing-your-authorized-oauth-apps).
+- Reaches: everything the granted scopes allow, as the owner: repositories (private ones too), files, branches,
+  commits, issues, pull requests and reviews, Actions runs and logs, code scanning, Dependabot and secret scanning
+  alerts, discussions, gists, notifications, projects, organisations and teams.
+- Read list: 66 tools: those with `readOnlyHint: true` in the server's tool snapshots (`pkg/github/__toolsnaps__`,
+  commit `9a72d8d`, 2026-11-20), less `get_secret_scanning_alert` and `list_secret_scanning_alerts` (they can show a
+  leaked secret) and `get_job_logs` (job logs can hold an unmasked secret), which ask. Tools only the hosted server
+  has (Copilot ones) are not in the snapshots, so they ask.
 
 ## Owner check
 
-Needs the owner's accounts, so it cannot be automated. For each of `clickup`, `jira` and `linear`, on Claude Code
+Needs the owner's accounts, so it cannot be automated. For each of `clickup`, `jira`, `linear` and `github`, on Claude Code
 2.1.295 or later:
 1. Enable the plugin in a test project; run `/mcp`, pick `plugin:<plugin>:<plugin>`, Authenticate, sign in.
 2. Check that the server's tools are named `mcp__plugin_<plugin>_<plugin>__…` and that no server you added yourself

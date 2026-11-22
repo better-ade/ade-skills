@@ -1,0 +1,1 @@
+{ "name": "github", "description": "GitHub through GitHub's own hosted MCP server: read repositories, issues and pull requests; every change through this server asks, or is refused when prompts are switched off.", "version": "0.1.0" }

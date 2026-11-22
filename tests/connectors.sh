@@ -3,7 +3,7 @@
 # network, no model calls. Called by tests/run.sh; exit 0 = pass. Each check is named as the story names it.
 cd "$(dirname "$0")/.." || exit 1; R="$PWD"; rc=0
 fail() { echo "FAIL: $*"; rc=1; }
-PLUGINS="clickup jira linear"  # github moved to story K1b after review (2026-11-22)
+PLUGINS="clickup jira linear github"  # github: story K1b, not shipped until K1b is approved
 # plugin -> the vendor's own domain (AC2)
 domain() { case "$1" in clickup) echo clickup.com;; jira) echo atlassian.com;; linear) echo linear.app;; github) echo githubcopilot.com;; esac; }
 

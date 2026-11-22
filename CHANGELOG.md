@@ -9,6 +9,8 @@
   `linear` (`https://mcp.linear.app/mcp`). The owner signs in through `/mcp`; nothing here holds a credential.
   `docs/connectors.md` records each server, the hook's contract and its limits; `tests/connectors.sh` checks them.
   GitHub moved to story K1b after review.
+- `github` plugin 0.1.0 (K1b, not released): GitHub's own hosted MCP server with the same hook; sign-in through
+  `/mcp` is expected to fail, so story K1b decides how it ships.
 - `browser` plugin 0.2.0: the `browse` skill defers to an ADE hub folder's own `playwright` MCP server
   (`<hub>/bin/browser run <folder>`) when the folder has one, and describes server profile mode (isolated by default,
   a per-folder profile the owner turns on and signs in to; the owner's word over Telegram on a server).
