@@ -1,0 +1,1 @@
+{ "name": "jira", "description": "Jira through Atlassian's own hosted MCP server (Rovo MCP, v2): read work items and boards; every change through this server asks, or is refused when prompts are switched off.", "version": "0.1.0" }

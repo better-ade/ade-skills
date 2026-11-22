@@ -7,6 +7,9 @@
     { "name": "browser", "source": "./plugins/browser", "description": "Browser automation (Claude in Chrome, Playwright MCP) with read-only defaults and ask-first rules." },
     { "name": "ade", "source": "./plugins/ade", "description": "Drive ADE from inside Claude Code through the ade CLI; starting agents and messaging stay behind the owner's prompt." },
     { "name": "notes", "source": "./plugins/notes", "description": "Meeting notes, summaries, action items, digests and captures, written into the named hub folder." },
-    { "name": "fde", "source": "./plugins/fde", "description": "Forward deployed engineering documents drafted from the customer's constraints; prices, dates and terms left blank." }
+    { "name": "fde", "source": "./plugins/fde", "description": "Forward deployed engineering documents drafted from the customer's constraints; prices, dates and terms left blank." },
+    { "name": "clickup", "source": "./plugins/clickup", "description": "ClickUp through ClickUp's own hosted MCP server; reads need no extra question; every change through this server asks, or is refused when prompts are switched off." },
+    { "name": "jira", "source": "./plugins/jira", "description": "Jira through Atlassian's own hosted MCP server (Rovo MCP, v2); reads need no extra question; every change through this server asks, or is refused when prompts are switched off." },
+    { "name": "linear", "source": "./plugins/linear", "description": "Linear through Linear's own hosted MCP server; reads need no extra question; every change through this server asks, or is refused when prompts are switched off." }
   ]
 }

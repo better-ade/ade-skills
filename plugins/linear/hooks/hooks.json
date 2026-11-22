@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "mcp__plugin_linear_linear__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/ask-unless-read.sh", "mcp__plugin_linear_linear__"],
+            "onFailure": "block"
+          }
+        ]
+      }
+    ]
+  }
+}

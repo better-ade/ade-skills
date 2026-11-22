@@ -1,0 +1,1 @@
+{ "name": "linear", "description": "Linear through Linear's own hosted MCP server: read issues, projects and documents; every change through this server asks, or is refused when prompts are switched off.", "version": "0.1.0" }
