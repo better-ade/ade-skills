@@ -4,7 +4,8 @@
   "title": "Gmail",
   "job": "mail",
   "tier": 2,
-  "state": "ready",
+  "state": "held",
+  "held": "Not available until the guard's hook and the Gmail skill ship in ade-skills.",
   "sign_in": {
     "kind": "claude-ai",
     "connector": "Gmail"

@@ -4,7 +4,8 @@
   "title": "GitHub",
   "job": "code",
   "tier": 2,
-  "state": "ready",
+  "state": "held",
+  "held": "Not available until the guard's hook and the GitHub skill ship in ade-skills.",
   "sign_in": {
     "kind": "cli",
     "cli": "gh"
@@ -16,208 +17,98 @@
     "commands": {
       "gh": {
         "free": [
-          [
-            "pr",
-            "view"
-          ],
-          [
-            "pr",
-            "list"
-          ],
-          [
-            "pr",
-            "diff"
-          ],
-          [
-            "pr",
-            "checks"
-          ],
-          [
-            "pr",
-            "status"
-          ],
-          [
-            "issue",
-            "view"
-          ],
-          [
-            "issue",
-            "list"
-          ],
-          [
-            "issue",
-            "status"
-          ],
-          [
-            "repo",
-            "view"
-          ],
-          [
-            "repo",
-            "list"
-          ],
-          [
-            "run",
-            "view"
-          ],
-          [
-            "run",
-            "list"
-          ],
-          [
-            "workflow",
-            "view"
-          ],
-          [
-            "workflow",
-            "list"
-          ],
-          [
-            "release",
-            "view"
-          ],
-          [
-            "release",
-            "list"
-          ],
-          [
-            "label",
-            "list"
-          ],
-          [
-            "search",
-            "repos"
-          ],
-          [
-            "search",
-            "issues"
-          ],
-          [
-            "search",
-            "prs"
-          ],
-          [
-            "search",
-            "code"
-          ],
-          [
-            "search",
-            "commits"
-          ],
-          [
-            "auth",
-            "status"
-          ]
+          { "words": ["pr", "view"], "flags": ["--repo=", "-R=", "--json=", "--comments"], "args": "any" },
+          { "words": ["pr", "list"], "flags": ["--repo=", "-R=", "--json=", "--limit=", "-L=", "--state=", "--label=", "--author=", "--assignee=", "--base=", "--head=", "--search="], "args": "none" },
+          { "words": ["pr", "diff"], "flags": ["--repo=", "-R=", "--name-only", "--patch"], "args": "any" },
+          { "words": ["pr", "checks"], "flags": ["--repo=", "-R=", "--required"], "args": "any" },
+          { "words": ["pr", "status"], "flags": ["--repo=", "-R=", "--json="], "args": "none" },
+          { "words": ["issue", "view"], "flags": ["--repo=", "-R=", "--json=", "--comments"], "args": "any" },
+          { "words": ["issue", "list"], "flags": ["--repo=", "-R=", "--json=", "--limit=", "-L=", "--state=", "--label=", "--author=", "--assignee=", "--search="], "args": "none" },
+          { "words": ["issue", "status"], "flags": ["--repo=", "-R=", "--json="], "args": "none" },
+          { "words": ["repo", "view"], "flags": ["--json=", "--branch="], "args": "any" },
+          { "words": ["repo", "list"], "flags": ["--json=", "--limit=", "-L="], "args": "any" },
+          { "words": ["run", "view"], "flags": ["--repo=", "-R=", "--json=", "--log", "--log-failed", "--job=", "--attempt="], "args": "any" },
+          { "words": ["run", "list"], "flags": ["--repo=", "-R=", "--json=", "--limit=", "-L=", "--workflow=", "--branch=", "--status="], "args": "none" },
+          { "words": ["workflow", "view"], "flags": ["--repo=", "-R=", "--yaml", "--ref="], "args": "any" },
+          { "words": ["workflow", "list"], "flags": ["--repo=", "-R=", "--json=", "--limit=", "-L=", "--all"], "args": "none" },
+          { "words": ["release", "view"], "flags": ["--repo=", "-R=", "--json="], "args": "any" },
+          { "words": ["release", "list"], "flags": ["--repo=", "-R=", "--json=", "--limit=", "-L="], "args": "none" },
+          { "words": ["label", "list"], "flags": ["--repo=", "-R=", "--json=", "--limit=", "-L=", "--search="], "args": "none" },
+          { "words": ["search", "repos"], "flags": ["--json=", "--limit=", "-L=", "--owner="], "args": "any" },
+          { "words": ["search", "issues"], "flags": ["--json=", "--limit=", "-L=", "--repo=", "-R=", "--state="], "args": "any" },
+          { "words": ["search", "prs"], "flags": ["--json=", "--limit=", "-L=", "--repo=", "-R=", "--state="], "args": "any" },
+          { "words": ["search", "code"], "flags": ["--json=", "--limit=", "-L=", "--repo=", "-R=", "--language="], "args": "any" },
+          { "words": ["search", "commits"], "flags": ["--json=", "--limit=", "-L=", "--repo=", "-R=", "--author="], "args": "any" },
+          { "words": ["auth", "status"], "flags": [], "args": "none" }
         ],
         "deny": [
-          [
-            "auth",
-            "token"
-          ],
-          [
-            "--show-token"
-          ]
+          ["auth", "token"],
+          ["auth", "status", "--show-token"],
+          ["auth", "status", "-t"]
         ]
       },
       "git": {
         "free": [
-          [
-            "status"
-          ],
-          [
-            "log"
-          ],
-          [
-            "diff"
-          ],
-          [
-            "show"
-          ],
-          [
-            "add"
-          ],
-          [
-            "commit"
-          ],
-          [
-            "restore"
-          ],
-          [
-            "switch"
-          ],
-          [
-            "checkout"
-          ],
-          [
-            "branch"
-          ],
-          [
-            "tag"
-          ],
-          [
-            "stash"
-          ],
-          [
-            "fetch"
-          ],
-          [
-            "pull"
-          ],
-          [
-            "merge"
-          ],
-          [
-            "rebase"
-          ],
-          [
-            "reset"
-          ],
-          [
-            "rev-parse"
-          ],
-          [
-            "ls-files"
-          ],
-          [
-            "blame"
-          ],
-          [
-            "grep"
-          ],
-          [
-            "worktree"
-          ],
-          [
-            "describe"
-          ],
-          [
-            "cherry-pick"
-          ],
-          [
-            "revert"
-          ],
-          [
-            "mv"
-          ],
-          [
-            "rm"
-          ],
-          [
-            "remote",
-            "-v"
-          ]
+          { "words": ["status"], "flags": ["-s", "--short", "-b", "--branch", "--porcelain", "--porcelain=v1", "--porcelain=v2"], "args": "any" },
+          { "words": ["log"], "flags": ["--oneline", "--graph", "--decorate", "--all", "--stat", "--name-only", "--name-status", "-p", "--patch", "--reverse", "--merges", "--no-merges", "--first-parent", "--follow", "--no-ext-diff", "--no-textconv", "-n=", "--max-count=", "--since=", "--until=", "--author=", "--grep=", "--format=", "--pretty=", "--date="], "args": "any" },
+          { "words": ["diff"], "flags": ["--stat", "--name-only", "--name-status", "--cached", "--staged", "--check", "--no-ext-diff", "--no-textconv"], "args": "any" },
+          { "words": ["show"], "flags": ["--stat", "--name-only", "--name-status", "--oneline", "--no-patch", "-s", "--no-ext-diff", "--no-textconv", "--format=", "--pretty="], "args": "any" },
+          { "words": ["blame"], "flags": ["-w", "-e", "--porcelain", "-L="], "args": "any" },
+          { "words": ["rev-parse"], "flags": ["--show-toplevel", "--git-dir", "--abbrev-ref", "--short", "--verify", "--symbolic-full-name", "--is-inside-work-tree"], "args": "any" },
+          { "words": ["ls-files"], "flags": ["-c", "--cached", "-m", "--modified", "-o", "--others", "-d", "--deleted", "--exclude-standard"], "args": "any" },
+          { "words": ["describe"], "flags": ["--tags", "--always", "--long"], "args": "any" },
+          { "words": ["grep"], "flags": ["-n", "--line-number", "-i", "--ignore-case", "-l", "--files-with-matches", "-w", "--word-regexp", "-E", "-F", "--cached", "-e="], "args": "any" },
+          { "words": ["rev-list"], "flags": ["--count", "--all", "--reverse", "--first-parent", "--merges", "--no-merges", "--left-right", "-n=", "--max-count="], "args": "any" },
+          { "words": ["merge-base"], "flags": ["--is-ancestor", "--all", "--fork-point"], "args": "any" },
+          { "words": ["cat-file"], "flags": ["-t", "-s", "-p", "-e"], "args": "any" },
+          { "words": ["ls-tree"], "flags": ["-r", "-t", "-d", "-l", "--name-only", "--full-tree"], "args": "any" },
+          { "words": ["shortlog"], "flags": ["-s", "-n", "-e", "-sn", "--summary", "--numbered", "--email"], "args": "any" },
+          { "words": ["reflog"], "flags": ["-n=", "--date="], "args": "none" },
+          { "words": ["reflog", "show"], "flags": ["-n=", "--date="], "args": "any" },
+          { "words": ["show-ref"], "flags": ["--heads", "--tags", "--verify", "--hash", "-s"], "args": "any" },
+          { "words": ["for-each-ref"], "flags": ["--format=", "--sort=", "--count="], "args": "any" },
+          { "words": ["diff-tree"], "flags": ["-r", "--name-only", "--name-status", "--no-commit-id", "--stat", "--no-ext-diff", "--no-textconv"], "args": "any" },
+          { "words": ["name-rev"], "flags": ["--name-only", "--tags"], "args": "any" },
+          { "words": ["check-ignore"], "flags": ["-v", "--verbose", "-n", "--non-matching", "--no-index"], "args": "any" },
+          { "words": ["stash", "list"], "flags": [], "args": "none" },
+          { "words": ["stash", "show"], "flags": ["-p", "--patch", "--stat", "--name-only"], "args": "any" },
+          { "words": ["worktree", "list"], "flags": ["--porcelain", "-v", "--verbose"], "args": "none" },
+          { "words": ["remote"], "flags": ["-v", "--verbose"], "args": "none" },
+          { "words": ["remote", "get-url"], "flags": ["--push", "--all"], "args": "any" },
+          { "words": ["add"], "flags": ["-A", "--all", "-u", "--update", "-N", "--intent-to-add"], "args": "any" },
+          { "words": ["commit"], "flags": ["-m=", "--message=", "-F=", "--file=", "-a", "--all", "--amend", "--no-edit", "--allow-empty", "-s", "--signoff"], "args": "any" },
+          { "words": ["switch"], "flags": ["-c=", "--create=", "--detach", "-"], "args": "any" },
+          { "words": ["checkout"], "flags": ["-b=", "-B=", "--detach", "-"], "args": "any" },
+          { "words": ["restore"], "flags": ["--staged", "--worktree", "--source="], "args": "any" },
+          { "words": ["reset"], "flags": ["--soft", "--mixed", "--hard", "--keep"], "args": "any" },
+          { "words": ["mv"], "flags": ["-f", "-k"], "args": "any" },
+          { "words": ["rm"], "flags": ["-r", "-f", "--cached"], "args": "any" },
+          { "words": ["clean"], "flags": ["-n", "--dry-run", "-f", "--force", "-d", "-fd", "-df", "-nd", "-dn"], "args": "any" },
+          { "words": ["branch"], "flags": ["-a", "--all", "-r", "--remotes", "-v", "-vv", "--verbose", "--show-current", "--list", "-d", "--delete", "-D", "-m", "--move", "-M", "-c", "--copy", "-u=", "--set-upstream-to=", "--unset-upstream"], "args": "any" },
+          { "words": ["tag"], "flags": ["-l", "--list", "-a", "--annotate", "-m=", "--message=", "-d", "--delete"], "args": "any" },
+          { "words": ["stash"], "flags": ["-u", "--include-untracked", "-m=", "--message="], "args": "none" },
+          { "words": ["stash", "push"], "flags": ["-u", "--include-untracked", "--staged", "-m=", "--message="], "args": "any" },
+          { "words": ["stash", "pop"], "flags": ["--index"], "args": "any" },
+          { "words": ["stash", "apply"], "flags": ["--index"], "args": "any" },
+          { "words": ["stash", "drop"], "flags": [], "args": "any" },
+          { "words": ["merge"], "flags": ["--no-ff", "--ff-only", "--squash", "--no-edit", "--abort", "--continue", "-m=", "--message="], "args": "any" },
+          { "words": ["rebase"], "flags": ["--continue", "--abort", "--skip", "--onto="], "args": "any" },
+          { "words": ["cherry-pick"], "flags": ["--continue", "--abort", "--skip", "--no-edit", "--no-commit"], "args": "any" },
+          { "words": ["revert"], "flags": ["--continue", "--abort", "--skip", "--no-edit", "--no-commit"], "args": "any" },
+          { "words": ["worktree", "add"], "flags": ["-b=", "-B=", "--detach"], "args": "any" },
+          { "words": ["worktree", "remove"], "flags": ["-f", "--force"], "args": "any" },
+          { "words": ["worktree", "prune"], "flags": ["-n", "--dry-run", "-v", "--verbose"], "args": "none" },
+          { "words": ["init"], "flags": ["-b=", "--initial-branch=", "-q", "--quiet"], "args": "any" },
+          { "words": ["fetch"], "flags": ["--all", "--prune", "--tags", "--no-tags"], "args": "names" },
+          { "words": ["pull"], "flags": ["--ff-only", "--rebase", "--no-rebase", "--prune", "--tags"], "args": "names" }
         ],
         "deny": [
-          [
-            "credential"
-          ]
+          ["credential", "fill"]
         ]
       }
     }
   },
-  "hosts": [
-    "api.githubcopilot.com"
-  ],
+  "hosts": ["api.githubcopilot.com"],
   "pages": {},
-  "reaches": "Every repository your gh sign-in can reach; pushing, merging, releases, settings and secrets ask each time."
+  "reaches": "Every repository your gh sign-in can reach; pushing and every change on GitHub ask each time."
 }

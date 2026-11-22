@@ -3,11 +3,13 @@
 ## 0.7.0
 
 - Connector recipes (K5): `guard` plugin 0.1.0 carries one recipe per service in `plugins/guard/connectors/`, format 1
-  of `.ade/context/connectors.md`, for `ade connect` and the guard (its hook is story K6). Ready: `clickup`, `jira`,
-  `linear` (tier 0, read lists equal to each plugin's `read-tools.txt`), `github` (tier 2, through `gh`) and `gmail`
-  (tier 2, the claude.ai connector; sending, replying and forwarding ask). Held: `slack` (tier 1), `discord` (tier 3),
-  `outlook` and `teams` (tier 4). `plugins/guard/scripts/check-recipe.sh` checks one recipe; `tests/recipes.sh`
-  checks them all. Each release attaches every recipe as `connector-<service>.json`, hashed in `release.json`.
+  of `.ade/context/connectors.md` (amendment 1), for `ade connect` and the guard (its hook is story K6; K5 and K6 are
+  released together). Ready with the guard's hook: `clickup`, `jira`, `linear` (tier 0, read lists equal to each
+  plugin's `read-tools.txt`). Held: `github` and `gmail` (tier 2, until the guard's hook and their skills ship; `github`
+  lists the `gh` and `git` commands that need no question, each with its own flags), `slack` (tier 1), `discord`
+  (tier 3), `outlook` and `teams` (tier 4). `plugins/guard/scripts/check-recipe.sh` checks one recipe or the folder;
+  `tests/recipes.sh` checks them all. Each release attaches every recipe as `connector-<service>.json`, hashed in
+  `release.json`.
 
 ## 0.6.0
 
