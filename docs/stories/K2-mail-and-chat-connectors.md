@@ -22,6 +22,18 @@ Microsoft's. **Default taken:** Microsoft's own servers only; the plugin takes t
 environment and says clearly what the administrator must do. The community package is not shipped unless the owner
 asks for it, and then pinned to a version and marked as third-party.
 
+**Builder's finding (2026-11-22): none of the three is shipped; all are held.** Details and sources are in
+`docs/connectors.md`, "Held: mail and chat (K2, K3)".
+- `gmail`: Google's sign-in has no dynamic client registration and needs the owner's own client id and client secret.
+  Claude Code takes a client secret only when a server is added by hand, which puts it outside the plugin and its
+  hook. The server is a Developer Preview; it drafts, labels, trashes and marks spam, and has no send tool.
+- `outlook`, `teams`: Microsoft Entra has no dynamic client registration, so each tenant needs its own client id, and
+  Claude Code does not document taking an `oauth` client id from a variable. Microsoft now marks these Agent 365 Mail
+  and Teams servers as legacy, "shouldn't be used in production environments or new projects", and points to Work IQ
+  MCP, whose generic tools (`fetch`, `do_action`) a read list by tool name cannot guard.
+- For the owner: wait for Claude Code to document a plugin-held client secret (Gmail) or a client id from a variable
+  (all three), or choose Work IQ MCP with a hook that reads the path as well as the tool name (a new story).
+
 ## Acceptance criteria (`tests/connectors.sh`, extended; no network, no model calls)
 | AC | Criterion | Test |
 |---|---|---|

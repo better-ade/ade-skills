@@ -137,6 +137,113 @@ GitHub is not shipped yet: its hosted server's sign-in does not work through `/m
 outside this plugin, which would leave the server unguarded (story K1b). Work with GitHub through `gh` and git, under
 the `git` plugin's rules.
 
+## Held: mail and chat (K2, K3)
+
+Stories K2 (Gmail, Outlook, Teams) and K3 (Slack, Discord) were checked on 2026-11-22 against each vendor's own page,
+Claude Code's [MCP reference](https://code.claude.com/docs/en/mcp) and
+[plugins reference](https://code.claude.com/docs/en/plugins-reference), and a plain request with no credentials to
+each address. None of them is shipped: no plugin folder, no marketplace entry. The rule they were held against is
+K1's: a plugin ships only if sign-in works with the server declared in the plugin's own `.mcp.json`, with no token or
+client secret in the repo, a project file, a command line or an environment variable agents' shell commands can read,
+and with nothing that differs per owner written into the repo.
+
+What Claude Code documents on the day:
+- A plugin's `.mcp.json` can carry an `oauth` object (`clientId`, `callbackPort`, `authServerMetadataUrl`, `scopes`).
+- `${VAR}` expansion is documented for `command`, `args`, `env`, `url` and `headers`, not for `oauth`. A
+  `${user_config.KEY}` value is documented as "substituted in MCP server config", but `claude plugin validate` (2.1.330)
+  checks such a reference in `url` and not in `oauth.clientId`, so a client id from a variable is not shown to work.
+- A client secret is set only when the server is added by hand ("You can set the client secret only when you add the
+  server"); that puts the server outside the plugin, where its hook never fires (see "If you already added this server
+  yourself"). There is no documented `oauth` field for a secret in a plugin.
+
+### `gmail`
+
+- Server: `https://gmailmcp.googleapis.com/mcp/v1`, documented at
+  https://developers.google.com/workspace/gmail/api/reference/mcp (set-up:
+  https://developers.google.com/workspace/gmail/api/guides/configure-mcp-server). Developer Preview: the owner's Google
+  account must be in the Google Workspace Developer Preview Program.
+- Answers without credentials: `initialize` and `tools/list` return `200`; `tools/call` returns `401` with
+  `WWW-Authenticate: Bearer resource_metadata=".../.well-known/oauth-protected-resource/<tool>"`. The resource metadata
+  names `https://accounts.google.com/` as the authorization server.
+- Dynamic client registration: no. Google's authorization server metadata has no `registration_endpoint` and no
+  client id metadata document support.
+- Tools on the day (live `tools/list`, 23): reads `get_message`, `get_thread`, `search_threads`, `list_labels`,
+  `list_drafts`, `get_draft`; changes `create_draft`, `create_label`, `label_message`, `unlabel_message`,
+  `update_message_labels`, `label_thread`, `unlabel_thread`, `trash_message`, `untrash_message`, `trash_thread`,
+  `untrash_thread`, `mark_message_spam`, `unmark_message_spam`, `mark_thread_spam`, `unmark_thread_spam`,
+  `apply_sensitive_message_label`, `apply_sensitive_thread_label`. No send tool: it drafts but does not send. Google's
+  reference page lists 10 of these.
+- Why: sign-in needs the owner's own OAuth client id and client secret (Google's page: "Copy your Client ID and Client
+  Secret"), and a plugin cannot hold the secret; adding the server by hand with the secret leaves it unguarded.
+- To ship it: Claude Code would have to document a client secret for a plugin's server kept in its own secure storage
+  (for example a sensitive `userConfig` value used by `oauth`), or Google would have to offer dynamic client
+  registration. The owner would also join the Developer Preview and create a Google Cloud project with an AI-agent
+  OAuth client.
+
+### `outlook`
+
+- Server: Microsoft's Agent 365 Mail server,
+  `https://agent365.svc.cloud.microsoft/agents/tenants/{tenantId}/servers/mcp_MailTools`, documented at
+  https://learn.microsoft.com/en-us/microsoft-copilot-studio/mcp-mail-tools (overview:
+  https://learn.microsoft.com/en-us/microsoft-agent-365/tooling-servers-overview).
+- Answers without credentials: with a placeholder tenant id, `400` `TenantIdInvalid` and no challenge; it was not tried
+  with a real tenant id. Sign-in is Microsoft Entra ID, whose metadata has no `registration_endpoint`.
+- Microsoft marks it legacy: the Mail and Teams servers "are only intended for backward compatibility purposes and
+  shouldn't be used in production environments or new projects"; new work is pointed to Work IQ MCP. Preview; needs
+  the tenant's administrator and licence.
+- Tools (Microsoft's page, 10): reads `mcp_MailTools_graph_mail_getMessage`, `mcp_MailTools_graph_mail_listSent`,
+  `mcp_MailTools_graph_mail_searchMessages`; changes `createMessage` (a draft), `sendMail`, `sendDraft`, `reply`,
+  `replyAll`, `updateMessage`, `deleteMessage` (each prefixed `mcp_MailTools_graph_mail_`).
+- Why: no dynamic client registration, so sign-in needs an Entra app registration's client id, which differs per
+  tenant and which a plugin cannot take from a variable; and Microsoft itself says not to start new work on it.
+- To ship it: the owner decides between waiting and Microsoft's Work IQ MCP (`https://workiq.svc.cloud.microsoft/mcp`,
+  also Entra, also no dynamic registration). Work IQ's generic tools (`fetch`, `do_action`, `create_entity`, ...) act on
+  a path, so a read list by tool name cannot tell reading mail from sending it (`do_action /me/sendMail`), the same
+  trap as Jira's `executeRead`.
+
+### `teams`
+
+- Server: Microsoft's Agent 365 Teams server,
+  `https://agent365.svc.cloud.microsoft/agents/tenants/{tenantId}/servers/mcp_TeamsServer`, documented at
+  https://learn.microsoft.com/en-us/microsoft-copilot-studio/mcp-teams-tools.
+- Answers without credentials: as `outlook` (`400` `TenantIdInvalid` with a placeholder tenant id).
+- Microsoft marks it legacy, as `outlook`. Preview; scope `McpServers.Teams.All`.
+- Why: as `outlook`.
+- To ship it: as `outlook`.
+
+### `slack`
+
+- Server: `https://mcp.slack.com/mcp`, documented at https://docs.slack.dev/ai/slack-mcp-server (Claude Code:
+  https://docs.slack.dev/ai/slack-mcp-server/connect-to-claude).
+- Answers without credentials: `401`, `WWW-Authenticate: Bearer
+  resource_metadata="https://mcp.slack.com/.well-known/oauth-protected-resource"`.
+- Dynamic client registration: no. Slack's page: "We do not support SSE-based connections or Dynamic Client
+  Registration at this time", and "MCP clients must be backed by a registered Slack app with a fixed app ID and
+  hardcode that app ID". The metadata has no `registration_endpoint`; its token endpoint takes `client_secret_post`.
+  Slack also offers PKCE for desktop clients.
+- Sign-in inside a plugin does work: Slack's own Claude Code plugin declares the server in its `.mcp.json` with an
+  `oauth` object holding Slack's published client id and `callbackPort` 3118, and no secret. A workspace administrator
+  approves the app.
+- Tool names Slack publishes (its page and its own plugin's skills; the full list comes only from the signed-in
+  server): reads `slack_search_public`, `slack_search_public_and_private`, `slack_search_channels`,
+  `slack_search_users`, `slack_read_channel`, `slack_read_thread`, `slack_read_user_profile`,
+  `slack_list_channel_members`; asks `slack_read_file` (opens a file), `slack_send_message_draft`,
+  `slack_get_file_upload_url`, `slack_complete_file_upload`, and every unnamed tool (send, schedule, react, create
+  channel, canvases, lists).
+- Why: the only documented way is Slack's client id written into the plugin's `.mcp.json`, and this repo keeps every
+  client id out (and story K3 wanted it from an environment variable, which `oauth` does not document).
+- To ship it: the owner decides whether a vendor's published client id (Slack's app for Claude, not the owner's) may be
+  written into `.mcp.json`. If yes, the plugin is built as K1's with the read list above. Slack also publishes its own
+  plugin, `slack@slack`, whose server key is `slack`; installing both would give two servers at one address.
+
+### `discord`
+
+- Story K3 records that Discord has not published an MCP server of its own, leaving a community package run with the
+  owner's bot token. Not checked again on the day, because the open question below holds it either way.
+- Why: story K3's open question is not answered.
+- To ship it: the owner answers K3's open question (a community package pinned to one version, the bot token only from
+  ade-secrets).
+
 ## Owner check
 
 Needs the owner's accounts, so it cannot be automated. For each of `clickup`, `jira` and `linear`, on Claude Code
