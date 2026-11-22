@@ -1,5 +1,6 @@
 #!/bin/bash
-# Story K1 checks for the work-tracker connectors (clickup, jira, linear, github). Files and local scripts only: no
+# Story K1 checks for the work-tracker connectors (clickup, jira, linear, github), and the K2 and K3 held mail and chat
+# connectors (mail_chat_held). Files and local scripts only: no
 # network, no model calls. Called by tests/run.sh; exit 0 = pass. Each check is named as the story names it.
 cd "$(dirname "$0")/.." || exit 1; R="$PWD"; rc=0
 fail() { echo "FAIL: $*"; rc=1; }
@@ -416,6 +417,38 @@ sys.exit(1 if bad else 0)
 PY
 }
 
+# Stories K2 and K3 (2026-11-22): no mail or chat connector could be shipped honestly (sign-in needs a credential or a
+# client id the plugin cannot carry, see docs/connectors.md "Held"). Each held plugin has no folder, no marketplace
+# entry and no README row; the docs say why and what the owner would decide; each story records the finding.
+HELD="gmail outlook teams slack discord"
+mail_chat_held() {
+  python3 - "$HELD" <<'PY' || rc=1
+import json, os, re, sys
+held = sys.argv[1].split(); bad = []
+d = open("docs/connectors.md").read()
+m = re.search(r"^## Held: mail and chat \(K2, K3\)\n(.*?)(?=^## |\Z)", d, re.S | re.M)
+if not m: bad.append("docs/connectors.md: no '## Held: mail and chat (K2, K3)' section")
+listed = {x["name"] for x in json.load(open(".claude-plugin/marketplace.json"))["plugins"]}
+readme = open("README.md").read()
+for p in held:
+    if os.path.exists(f"plugins/{p}"): bad.append(f"plugins/{p}: exists, but {p} is held")
+    if p in listed: bad.append(f"marketplace.json: lists {p}, but it is held")
+    if re.search(rf"^\| `{p}` \|", readme, re.M): bad.append(f"README.md: has a `{p}` row, but it is held")
+    if m:
+        s = re.search(rf"^### `{p}`\n(.*?)(?=^### |\Z)", m.group(1), re.S | re.M)
+        if not s: bad.append(f"docs/connectors.md Held: no '### `{p}`' entry"); continue
+        for field in ["Why:", "To ship it:"]:
+            if not re.search(rf"^- {re.escape(field)} \S", s.group(1), re.M): bad.append(f"docs/connectors.md Held `{p}`: no '- {field}' line")
+for story in ["docs/stories/K2-mail-and-chat-connectors.md", "docs/stories/K3-slack-and-discord-connectors.md"]:
+    t = open(story).read()
+    q = re.search(r"^## Open question for the owner\n(.*?)(?=^## |\Z)", t, re.S | re.M)
+    if not q or not re.search(r"^\*\*Builder's finding \(2026-11-22\)", q.group(1), re.M):
+        bad.append(f"{story}: no dated builder's finding under '## Open question for the owner'")
+for b in bad: print("FAIL: mail_chat_held: " + b)
+sys.exit(1 if bad else 0)
+PY
+}
+
 connectors_valid; connectors_vendor_only; connectors_no_secret; connectors_hook_asks
-connectors_ask_first; connectors_rules; connectors_docs; connectors_listed; connectors_guarded
+connectors_ask_first; connectors_rules; connectors_docs; connectors_listed; connectors_guarded; mail_chat_held
 exit $rc

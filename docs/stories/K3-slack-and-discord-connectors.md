@@ -20,6 +20,17 @@ Discord has not published an MCP server of its own. The choices: (1) leave `disc
 community package would stand between the model and the owner's server, and the bot token is a secret that must come
 from ade-secrets, never from a file in the project.
 
+**Builder's finding (2026-11-22): `slack` is held for one owner decision; `discord` is not built.** Details and
+sources are in `docs/connectors.md`, "Held: mail and chat (K2, K3)".
+- `slack`: Slack offers no dynamic client registration and requires a fixed, hard-coded app id. Its own Claude Code
+  plugin signs in from inside the plugin with Slack's published client id and callback port 3118 in `.mcp.json`, and
+  no secret, so a guarded plugin can be built. But the only documented way puts that client id in the repo. Claude
+  Code does not document `${VAR}` in `oauth`, so criterion 2's environment variable is not available, and this repo
+  keeps every client id out. **For the owner:** may Slack's published client id (Slack's app, not the owner's) be
+  written into `plugins/slack/.mcp.json`? If yes, `slack` is built as K1's. The read list is ready in the docs: 8
+  names Slack publishes; `slack_read_file` asks, because it opens a file.
+- `discord`: the open question above is not answered, so nothing was built.
+
 ## Acceptance criteria (`tests/connectors.sh`, extended; no network, no model calls)
 | AC | Criterion | Test |
 |---|---|---|
