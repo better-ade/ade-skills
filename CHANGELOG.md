@@ -3,10 +3,12 @@
 ## 0.6.0
 
 - Connector plugins (K1), each 0.1.0, one per service, each with the vendor's own hosted MCP server, a skill and a
-  `PreToolUse` hook that asks before any tool not on the plugin's read list: `clickup` (`https://mcp.clickup.com/mcp`),
-  `jira` (Atlassian's Rovo MCP server, `https://mcp.atlassian.com/v2/mcp`), `linear` (`https://mcp.linear.app/mcp`)
-  and `github` (`https://api.githubcopilot.com/mcp/`). The owner signs in through `/mcp`; nothing here holds a
-  credential. `docs/connectors.md` records each server and the hook's contract; `tests/connectors.sh` checks them.
+  `PreToolUse` hook (run through `bash`, `onFailure: "block"`, Claude Code 2.1.295 or later) that asks before any tool
+  of that server not on the plugin's read list, and refuses it in `bypassPermissions` mode: `clickup`
+  (`https://mcp.clickup.com/mcp`), `jira` (Atlassian's Rovo MCP server, `https://mcp.atlassian.com/v2/mcp`) and
+  `linear` (`https://mcp.linear.app/mcp`). The owner signs in through `/mcp`; nothing here holds a credential.
+  `docs/connectors.md` records each server, the hook's contract and its limits; `tests/connectors.sh` checks them.
+  GitHub moved to story K1b after review.
 - `browser` plugin 0.2.0: the `browse` skill defers to an ADE hub folder's own `playwright` MCP server
   (`<hub>/bin/browser run <folder>`) when the folder has one, and describes server profile mode (isolated by default,
   a per-folder profile the owner turns on and signs in to; the owner's word over Telegram on a server).

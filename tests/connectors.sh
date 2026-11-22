@@ -3,7 +3,7 @@
 # network, no model calls. Called by tests/run.sh; exit 0 = pass. Each check is named as the story names it.
 cd "$(dirname "$0")/.." || exit 1; R="$PWD"; rc=0
 fail() { echo "FAIL: $*"; rc=1; }
-PLUGINS="clickup jira linear github"
+PLUGINS="clickup jira linear"  # github moved to story K1b after review (2026-11-22)
 # plugin -> the vendor's own domain (AC2)
 domain() { case "$1" in clickup) echo clickup.com;; jira) echo atlassian.com;; linear) echo linear.app;; github) echo githubcopilot.com;; esac; }
 
@@ -110,14 +110,53 @@ sys.exit(1 if bad else 0)
 PY
 }
 
+# run_hook <plugin> <stdin> [PATH prefix] [plugin root]: run the hook exactly as hooks.json declares it (exec form:
+# command + args, ${CLAUDE_PLUGIN_ROOT} substituted), as Claude Code would; print its stdout.
+PY="$(command -v python3)"
+run_hook() {
+  "$PY" -I - "$R/plugins/$1/hooks/hooks.json" "${4:-$R/plugins/$1}" "$2" "${3:-}" <<'PY'
+import json, os, subprocess, sys
+f, root, stdin, pre = sys.argv[1:5]
+h = json.load(open(f))["hooks"]["PreToolUse"][0]["hooks"][0]
+sub = lambda a: a.replace("${CLAUDE_PLUGIN_ROOT}", root)
+argv = [sub(h["command"])] + [sub(a) for a in h["args"]] if "args" in h else ["sh", "-c", sub(h["command"])]  # exec or shell form
+env = dict(os.environ, CLAUDE_PLUGIN_ROOT=root)
+if pre: env["PATH"] = pre + ":" + env["PATH"]
+try: r = subprocess.run(argv, input=stdin, capture_output=True, text=True, env=env, timeout=30)
+except OSError: sys.exit(127)
+sys.stdout.write(r.stdout)
+sys.exit(r.returncode)
+PY
+}
+# decision <hook stdout>: prints ask, deny, allow, none (empty) or bad (anything else, such as two lines).
+decision() {
+  "$PY" -I -c '
+import json, sys
+s = sys.argv[1]
+if s == "": print("none"); sys.exit()
+try:
+    o = json.loads(s); h = o["hookSpecificOutput"]
+    assert set(o) == {"hookSpecificOutput"} and set(h) == {"hookEventName", "permissionDecision", "permissionDecisionReason"}
+    assert h["hookEventName"] == "PreToolUse"
+    print(h["permissionDecision"])
+except Exception: print("bad")
+' "$1"
+}
+reason() { "$PY" -I -c 'import json,sys; print(json.loads(sys.argv[1])["hookSpecificOutput"]["permissionDecisionReason"])' "$1" 2>/dev/null; }
+input() { printf '{"hook_event_name":"PreToolUse","tool_name":"%s","tool_input":{},"permission_mode":"%s"}' "$1" "${2:-default}"; }
+
 # AC4: the hook asks for any tool of its server not on the read list, decides nothing for a listed read tool, never
-# allows or denies, and ignores other servers' tools. Run on sample tool names, including made-up new ones.
+# allows, and ignores other servers' tools. Run on sample tool names, including made-up new ones, exactly as hooks.json
+# runs it. Review fixes: it blocks when it fails (onFailure), runs without its exec bit, survives a helper that prints
+# junk, and refuses (deny) a change when prompts are switched off (bypassPermissions).
 connectors_hook_asks() {
-  local p h list pre out t other
+  local p h list pre out t other d T
+  T="$(mktemp -d)"
   for p in $PLUGINS; do
     h="plugins/$p/hooks/ask-unless-read.sh"; list="plugins/$p/hooks/read-tools.txt"; pre="mcp__plugin_${p}_${p}__"
     [ -f "$h" ] && [ -f "$list" ] || { fail "connectors_hook_asks: $p has no hooks/ask-unless-read.sh or hooks/read-tools.txt"; continue; }
-    # hooks.json runs the script on PreToolUse for this plugin's server only, with this server's prefix.
+    # hooks.json runs the script through bash (exec form), on PreToolUse for this plugin's server only, and blocks
+    # the call when the hook fails.
     python3 - "$p" "$pre" <<'PY' || rc=1
 import json, sys
 p, pre = sys.argv[1], sys.argv[2]
@@ -128,9 +167,9 @@ if h:
     if list(h) != ["PreToolUse"]: bad.append(f"plugins/{p}/hooks/hooks.json: events {list(h)}, want only PreToolUse")
     groups = h.get("PreToolUse", [])
     if [g.get("matcher") for g in groups] != [pre + ".*"]: bad.append(f"plugins/{p}/hooks/hooks.json: matchers {[g.get('matcher') for g in groups]}, want ['{pre}.*']")
-    want = f'"${{CLAUDE_PLUGIN_ROOT}}"/hooks/ask-unless-read.sh {pre}'
-    cmds = [x.get("command") for g in groups for x in g.get("hooks", [])]
-    if cmds != [want]: bad.append(f"plugins/{p}/hooks/hooks.json: commands {cmds}, want [{want!r}]")
+    want = {"type": "command", "command": "bash", "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/ask-unless-read.sh", pre], "onFailure": "block"}
+    hs = [x for g in groups for x in g.get("hooks", [])]
+    if hs != [want]: bad.append(f"plugins/{p}/hooks/hooks.json: hooks {hs}, want [{want}]")
 for b in bad: print("FAIL: connectors_hook_asks: " + b)
 sys.exit(1 if bad else 0)
 PY
@@ -158,41 +197,59 @@ for n in names:
 for b in bad: print("FAIL: connectors_hook_asks: " + b)
 sys.exit(1 if bad else 0)
 PY
-    # Every listed read tool: no output, exit 0.
+    # Every listed read tool: no output, exit 0, in the default mode and with prompts switched off.
     while IFS= read -r t; do
       t="${t%%#*}"; t="$(echo "$t" | tr -d '[:space:]')"; [ -n "$t" ] || continue
-      out="$(printf '{"hook_event_name":"PreToolUse","tool_name":"%s%s","tool_input":{}}' "$pre" "$t" | bash "$h" "$pre")" \
-        || fail "connectors_hook_asks: $p hook exited non-zero for read tool $t"
-      [ -z "$out" ] || fail "connectors_hook_asks: $p hook decided on read tool $t (got: $out)"
+      for mode in default bypassPermissions; do
+        out="$(run_hook "$p" "$(input "$pre$t" "$mode")")" || fail "connectors_hook_asks: $p hook exited non-zero for read tool $t"
+        [ -z "$out" ] || fail "connectors_hook_asks: $p hook decided on read tool $t in $mode (got: $out)"
+      done
     done < "$list"
-    # Changes and unknown tools: ask, with the tool named. Never allow or deny.
+    # Changes and unknown tools: ask, with the tool named, in every mode that can prompt; deny, naming the mode, when
+    # prompts are switched off. Never allow.
     for t in create_issue update_issue delete_issue add_comment merge_pull_request get_or_create_x listing_writer \
-             brand_new_tool_2027 "$(head -1 "$list" | tr -d '[:space:]')_and_write"; do
-      out="$(printf '{"hook_event_name":"PreToolUse","tool_name":"%s%s","tool_input":{}}' "$pre" "$t" | bash "$h" "$pre")" \
-        || fail "connectors_hook_asks: $p hook exited non-zero for $t"
-      python3 -c '
-import json, sys
-o = json.loads(sys.argv[1]); h = o["hookSpecificOutput"]
-assert h["hookEventName"] == "PreToolUse" and h["permissionDecision"] == "ask" and sys.argv[2] in h["permissionDecisionReason"]
-assert set(o) == {"hookSpecificOutput"} and set(h) == {"hookEventName", "permissionDecision", "permissionDecisionReason"}
-' "$out" "$t" 2>/dev/null || fail "connectors_hook_asks: $p hook did not ask (naming the tool) for $t (got: $out)"
+             brand_new_tool_2027 "$(grep -v '^#' "$list" | head -1 | tr -d '[:space:]')_and_write"; do
+      for mode in default plan acceptEdits auto dontAsk; do
+        out="$(run_hook "$p" "$(input "$pre$t" "$mode")")" || fail "connectors_hook_asks: $p hook exited non-zero for $t"
+        d="$(decision "$out")"
+        [ "$d" = ask ] && reason "$out" | grep -qF "$t" || fail "connectors_hook_asks: $p hook did not ask (naming the tool) for $t in $mode (got: $out)"
+      done
+      out="$(run_hook "$p" "$(input "$pre$t" bypassPermissions)")"
+      [ "$(decision "$out")" = deny ] && reason "$out" | grep -qF "$t" && reason "$out" | grep -qF bypassPermissions \
+        || fail "connectors_hook_asks: $p hook did not deny (naming the tool and the mode) $t in bypassPermissions (got: $out)"
     done
     # Input it cannot parse, or a tool name that is not a string: ask.
-    for bad in 'not json' '{"tool_name": 5}' '{}' ''; do
-      out="$(printf '%s' "$bad" | bash "$h" "$pre")"
-      python3 -c 'import json,sys; assert json.loads(sys.argv[1])["hookSpecificOutput"]["permissionDecision"] == "ask"' "$out" 2>/dev/null \
-        || fail "connectors_hook_asks: $p hook did not ask for unparseable input '$bad' (got: $out)"
+    for bad in 'not json' '{"tool_name": 5}' '{}' '' '[]' '{"tool_name":"'"$pre"'x","permission_mode":7}'; do
+      out="$(run_hook "$p" "$bad")"
+      [ "$(decision "$out")" = ask ] || fail "connectors_hook_asks: $p hook did not ask for unparseable input '$bad' (got: $out)"
     done
     # Other servers' tools (another plugin's, the bare form a user's own server would have, a built-in): no output.
+    # The matcher never sends the bare form to this hook; a server added outside the plugin is the skill rule's job.
     for other in "mcp__plugin_other_other__create_issue" "mcp__${p}__create_issue" "mcp__plugin_${p}_other__create_issue" "Bash"; do
-      out="$(printf '{"tool_name":"%s"}' "$other" | bash "$h" "$pre")"
+      out="$(run_hook "$p" "$(input "$other")")"
       [ -z "$out" ] || fail "connectors_hook_asks: $p hook decided on another server's tool $other (got: $out)"
     done
-    # The script never allows or denies and never touches the network.
-    grep -Eq '"(allow|deny)"|curl|wget|/dev/tcp|urllib|socket|requests' "$h" && fail "connectors_hook_asks: $h mentions allow, deny or a network call"
+    # The exec bit lost: the hook still runs (through bash) and still asks.
+    rm -rf "$T/$p"; cp -R "plugins/$p" "$T/$p"; chmod -x "$T/$p/hooks/ask-unless-read.sh"
+    out="$(run_hook "$p" "$(input "${pre}create_issue")" "" "$T/$p")"
+    [ "$(decision "$out")" = ask ] || fail "connectors_hook_asks: $p hook without its exec bit did not ask (got: $out)"
+    # A python3 that prints junk, with and without failing: the hook prints one ask, never the junk.
+    mkdir -p "$T/junk1" "$T/junk0"
+    printf '#!/bin/bash\necho "junk line"\necho "{\\"hookSpecificOutput\\": 1}"\nexit 1\n' > "$T/junk1/python3"
+    printf '#!/bin/bash\necho "junk line"\nexit 0\n' > "$T/junk0/python3"
+    chmod +x "$T/junk1/python3" "$T/junk0/python3"
+    for j in junk1 junk0; do
+      for t in create_issue "$(grep -v '^#' "$list" | head -1 | tr -d '[:space:]')"; do
+        out="$(run_hook "$p" "$(input "$pre$t")" "$T/$j")"
+        [ "$(decision "$out")" = ask ] || fail "connectors_hook_asks: $p hook with a $j python3 did not print exactly one ask for $t (got: $out)"
+      done
+    done
+    # The script never allows and never touches the network.
+    grep -Eq '"allow"|curl|wget|/dev/tcp|urllib|socket|requests' "$h" && fail "connectors_hook_asks: $h mentions allow or a network call"
   done
+  rm -rf "$T"
   # A plugin stands alone: each carries the same script.
-  for p in jira linear github; do
+  for p in $PLUGINS; do
     cmp -s "plugins/clickup/hooks/ask-unless-read.sh" "plugins/$p/hooks/ask-unless-read.sh" || fail "connectors_hook_asks: plugins/$p/hooks/ask-unless-read.sh differs from clickup's copy"
   done
 }
@@ -281,6 +338,84 @@ sys.exit(1 if bad else 0)
 PY
 }
 
+# Review fixes (2026-11-22): the gaps around the hook. A server added outside the plugin is not guarded; the hook needs
+# Claude Code 2.1.295 for onFailure; the owner is not always the one answering; downloads, Jira's execute tools, MCP
+# resources; claims limited to what is enforced; GitHub not shipped in K1.
+connectors_guarded() {
+  local p
+  for p in $PLUGINS; do
+    python3 - "$p" "$(skill "$p")" <<'PY' || rc=1
+import json, re, sys
+p, f = sys.argv[1], sys.argv[2]; bad = []
+try: s = open(f).read()
+except OSError: s = ""
+lines = [
+    f"- If this service's tools are not named `mcp__plugin_{p}_{p}__…`, this plugin's hook is not guarding them: say so and change nothing.",
+    '- The hook\'s question reaches the owner only when the owner answers prompts; when something else answers (see "When the owner is not the one answering" in `docs/connectors.md`), change nothing without the owner\'s word in the conversation.',
+    "- A download tool returns a short-lived link or a save command; never fetch the link or run the command without asking.",
+    "- This plugin needs Claude Code 2.1.295 or later: its hook blocks the call when the hook fails.",
+]
+if p == "jira":
+    lines.append('- Never choose "always allow" for `executeRead`, `executeWrite` or `executeDestructive`; in Atlassian\'s default mode most reads go through `executeRead`, so they ask.')
+for l in lines:
+    if l not in s.splitlines(): bad.append(f"{f}: lacks the line '{l}'")
+pj = json.load(open(f"plugins/{p}/.claude-plugin/plugin.json")).get("description", "")
+if "every change through this server asks" not in pj: bad.append(f"plugins/{p}/.claude-plugin/plugin.json: description lacks 'every change through this server asks'")
+m = [x for x in json.load(open(".claude-plugin/marketplace.json"))["plugins"] if x["name"] == p]
+if not m or "every change through this server asks" not in m[0].get("description", ""): bad.append(f"marketplace.json: {p} description lacks 'every change through this server asks'")
+for b in bad: print("FAIL: connectors_guarded: " + b)
+sys.exit(1 if bad else 0)
+PY
+  done
+  python3 - "$PLUGINS" <<'PY' || rc=1
+import json, os, re, sys
+plugins = sys.argv[1].split(); bad = []
+d = open("docs/connectors.md").read()
+def sect(h):
+    m = re.search(rf"^## {re.escape(h)}\n(.*?)(?=^## |\Z)", d, re.S | re.M); return m.group(1) if m else None
+rule = "- If this service's tools are not named `mcp__plugin_<plugin>_<plugin>__…`, this plugin's hook is not guarding them: say so and change nothing."
+if rule not in d.splitlines(): bad.append(f"docs/connectors.md: lacks the line '{rule}'")
+own = sect("If you already added this server yourself")
+if own is None: bad.append("docs/connectors.md: no '## If you already added this server yourself' section")
+else:
+    blocks = re.findall(r"```json\n(.*?)```", own, re.S)
+    if len(blocks) != 1: bad.append("docs/connectors.md: 'If you already added' needs exactly one json block")
+    else:
+        try:
+            ask = json.loads(blocks[0])["permissions"]["ask"]
+            if ask != ["mcp__<your-server-name>__*"]: bad.append(f"docs/connectors.md: the ask rule is {ask}, want ['mcp__<your-server-name>__*']")
+        except (ValueError, KeyError, TypeError) as e: bad.append(f"docs/connectors.md: the ask-rule block does not parse as settings ({e})")
+    for need in ["remove", "claude.ai connector", "outranks"]:
+        if need not in own: bad.append(f"docs/connectors.md: 'If you already added' does not mention {need!r}")
+who = sect("When the owner is not the one answering")
+if who is None: bad.append("docs/connectors.md: no '## When the owner is not the one answering' section")
+else:
+    for need in ["--permission-prompt-tool", "PermissionRequest", "mod", "bypassPermissions", "dontAsk", "deny"]:
+        if need not in who: bad.append(f"docs/connectors.md: 'When the owner is not the one answering' does not mention {need}")
+for need in ["2.1.295", "onFailure", "ReadMcpResourceTool", '"always allow"']:
+    if need not in d: bad.append(f"docs/connectors.md: does not mention {need}")
+oc = sect("Owner check")
+if oc is None or "linear" not in oc or "read-tools.txt" not in oc: bad.append("docs/connectors.md: no '## Owner check' with the step comparing Linear's tools to read-tools.txt")
+if "github" not in plugins:
+    g = sect("GitHub")
+    if g is None or "not shipped yet" not in g or "`git` plugin" not in g or "`gh`" not in g:
+        bad.append("docs/connectors.md: no '## GitHub' section saying it is not shipped yet and pointing to `gh` and the `git` plugin")
+    if os.path.exists("plugins/github"): bad.append("plugins/github: still in this branch (moved to K1b)")
+    if any(x["name"] == "github" for x in json.load(open(".claude-plugin/marketplace.json"))["plugins"]): bad.append("marketplace.json: still lists github")
+    if re.search(r"^\| `github` \|", open("README.md").read(), re.M): bad.append("README.md: still has a `github` row")
+st = open("docs/stories/K1-work-tracker-connectors.md").read()
+if "K1b" not in st or "2026-11-22" not in st: bad.append("docs/stories/K1-work-tracker-connectors.md: no dated line moving GitHub to K1b")
+# Claims only what is enforced; no instruction to add the server outside the plugin.
+files = ["docs/connectors.md", "README.md", ".claude-plugin/marketplace.json"] + [os.path.join(r, n) for p in plugins for r, _, fs in os.walk(f"plugins/{p}") for n in fs]
+for f in files:
+    t = open(f, errors="ignore").read()
+    for phrase in ["takes nothing away", "every change asks the owner", "claude mcp add"]:
+        if phrase in t: bad.append(f"{f}: says '{phrase}'")
+for b in bad: print("FAIL: connectors_guarded: " + b)
+sys.exit(1 if bad else 0)
+PY
+}
+
 connectors_valid; connectors_vendor_only; connectors_no_secret; connectors_hook_asks
-connectors_ask_first; connectors_rules; connectors_docs; connectors_listed
+connectors_ask_first; connectors_rules; connectors_docs; connectors_listed; connectors_guarded
 exit $rc

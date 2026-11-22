@@ -3,7 +3,14 @@
     "PreToolUse": [
       {
         "matcher": "mcp__plugin_clickup_clickup__.*",
-        "hooks": [{ "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/ask-unless-read.sh mcp__plugin_clickup_clickup__" }]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/ask-unless-read.sh", "mcp__plugin_clickup_clickup__"],
+            "onFailure": "block"
+          }
+        ]
       }
     ]
   }
