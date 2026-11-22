@@ -1,0 +1,37 @@
+{
+  "format": 1,
+  "service": "gmail",
+  "title": "Gmail",
+  "job": "mail",
+  "tier": 2,
+  "state": "ready",
+  "sign_in": {
+    "kind": "claude-ai",
+    "connector": "Gmail"
+  },
+  "questions": [
+    {
+      "id": "added",
+      "ask": "Have you added the Gmail connector to your Claude account and signed in to it there?",
+      "to": "gate"
+    }
+  ],
+  "guard": {
+    "prefixes": [
+      "mcp__claude_ai_Gmail__"
+    ],
+    "read": [
+      "search_threads",
+      "get_thread",
+      "get_message",
+      "list_labels",
+      "list_drafts",
+      "get_draft"
+    ]
+  },
+  "hosts": [
+    "gmailmcp.googleapis.com"
+  ],
+  "pages": {},
+  "reaches": "The mail of the Google account signed in to the connector; sending, replying, forwarding, drafts, labels, trash, spam and attachments ask each time."
+}

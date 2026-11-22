@@ -6,4 +6,11 @@ permissions: { contents: write }
 jobs:
   release:
     uses: better-ade/.github/.github/workflows/release.yml@v1
-    with: { command: "bash tests/run.sh", runs-on: ubuntu-latest, setup: "npm install -g @anthropic-ai/claude-code@2.1.330 && curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz | tar xz gitleaks && sudo mv gitleaks /usr/local/bin/" }
+    # The shared workflow names each asset by its file name, so setup copies each recipe to
+    # .release-assets/connector-<service>.json; release.json then holds its sha256 under that name (the contract's
+    # pinning rule). tests/recipes.sh (recipes_release_assets) holds the assets list equal to the recipes on disk.
+    with:
+      command: "bash tests/run.sh"
+      runs-on: ubuntu-latest
+      setup: "npm install -g @anthropic-ai/claude-code@2.1.330 && curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz | tar xz gitleaks && sudo mv gitleaks /usr/local/bin/ && mkdir -p .release-assets && for f in plugins/guard/connectors/*.json; do cp \"$f\" \".release-assets/connector-${f##*/}\"; done"
+      assets: ".release-assets/connector-clickup.json .release-assets/connector-discord.json .release-assets/connector-github.json .release-assets/connector-gmail.json .release-assets/connector-jira.json .release-assets/connector-linear.json .release-assets/connector-outlook.json .release-assets/connector-slack.json .release-assets/connector-teams.json"

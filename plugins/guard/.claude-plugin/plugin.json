@@ -1,0 +1,1 @@
+{ "name": "guard", "description": "Holds the connector recipes (connectors/<service>.json, format 1) that ade connect and the guard read: how each service is signed in to, its tier and its read tools. The guard's hook is not in this version (story K6).", "version": "0.1.0" }

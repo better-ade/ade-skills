@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "service": "teams",
+  "title": "Microsoft Teams",
+  "job": "chat",
+  "tier": 4,
+  "state": "held",
+  "held": "Needs a tenant administrator and an Entra app per tenant, and Microsoft marks its Agent 365 Teams server legacy.",
+  "sign_in": {
+    "kind": "plugin",
+    "plugin": "teams",
+    "admin": "Register a Microsoft Entra app for this tenant and turn on the Agent 365 Teams server for it."
+  },
+  "questions": [],
+  "guard": {
+    "prefixes": [
+      "mcp__plugin_teams_teams__"
+    ],
+    "read": []
+  },
+  "hosts": [
+    "agent365.svc.cloud.microsoft"
+  ],
+  "pages": {
+    "docs": "https://learn.microsoft.com/en-us/microsoft-copilot-studio/mcp-teams-tools"
+  },
+  "reaches": "The Microsoft Teams chats and channels you can reach: reading and posting messages."
+}

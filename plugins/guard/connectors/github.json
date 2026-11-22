@@ -1,0 +1,223 @@
+{
+  "format": 1,
+  "service": "github",
+  "title": "GitHub",
+  "job": "code",
+  "tier": 2,
+  "state": "ready",
+  "sign_in": {
+    "kind": "cli",
+    "cli": "gh"
+  },
+  "questions": [],
+  "guard": {
+    "prefixes": [],
+    "read": [],
+    "commands": {
+      "gh": {
+        "free": [
+          [
+            "pr",
+            "view"
+          ],
+          [
+            "pr",
+            "list"
+          ],
+          [
+            "pr",
+            "diff"
+          ],
+          [
+            "pr",
+            "checks"
+          ],
+          [
+            "pr",
+            "status"
+          ],
+          [
+            "issue",
+            "view"
+          ],
+          [
+            "issue",
+            "list"
+          ],
+          [
+            "issue",
+            "status"
+          ],
+          [
+            "repo",
+            "view"
+          ],
+          [
+            "repo",
+            "list"
+          ],
+          [
+            "run",
+            "view"
+          ],
+          [
+            "run",
+            "list"
+          ],
+          [
+            "workflow",
+            "view"
+          ],
+          [
+            "workflow",
+            "list"
+          ],
+          [
+            "release",
+            "view"
+          ],
+          [
+            "release",
+            "list"
+          ],
+          [
+            "label",
+            "list"
+          ],
+          [
+            "search",
+            "repos"
+          ],
+          [
+            "search",
+            "issues"
+          ],
+          [
+            "search",
+            "prs"
+          ],
+          [
+            "search",
+            "code"
+          ],
+          [
+            "search",
+            "commits"
+          ],
+          [
+            "auth",
+            "status"
+          ]
+        ],
+        "deny": [
+          [
+            "auth",
+            "token"
+          ],
+          [
+            "--show-token"
+          ]
+        ]
+      },
+      "git": {
+        "free": [
+          [
+            "status"
+          ],
+          [
+            "log"
+          ],
+          [
+            "diff"
+          ],
+          [
+            "show"
+          ],
+          [
+            "add"
+          ],
+          [
+            "commit"
+          ],
+          [
+            "restore"
+          ],
+          [
+            "switch"
+          ],
+          [
+            "checkout"
+          ],
+          [
+            "branch"
+          ],
+          [
+            "tag"
+          ],
+          [
+            "stash"
+          ],
+          [
+            "fetch"
+          ],
+          [
+            "pull"
+          ],
+          [
+            "merge"
+          ],
+          [
+            "rebase"
+          ],
+          [
+            "reset"
+          ],
+          [
+            "rev-parse"
+          ],
+          [
+            "ls-files"
+          ],
+          [
+            "blame"
+          ],
+          [
+            "grep"
+          ],
+          [
+            "worktree"
+          ],
+          [
+            "describe"
+          ],
+          [
+            "cherry-pick"
+          ],
+          [
+            "revert"
+          ],
+          [
+            "mv"
+          ],
+          [
+            "rm"
+          ],
+          [
+            "remote",
+            "-v"
+          ]
+        ],
+        "deny": [
+          [
+            "credential"
+          ]
+        ]
+      }
+    }
+  },
+  "hosts": [
+    "api.githubcopilot.com"
+  ],
+  "pages": {},
+  "reaches": "Every repository your gh sign-in can reach; pushing, merging, releases, settings and secrets ask each time."
+}

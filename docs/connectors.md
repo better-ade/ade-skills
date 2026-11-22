@@ -256,3 +256,41 @@ Needs the owner's accounts, so it cannot be automated. For each of `clickup`, `j
 5. For `linear`: compare the tool list `/mcp` shows with `plugins/linear/hooks/read-tools.txt`, and report any read
    tool missing from it and any name on it that is not a read (its 19 names are not confirmed on the day).
 6. Sign out with Clear authentication, and revoke at the vendor as above.
+
+## Recipes (K5)
+
+One data file per service, `plugins/guard/connectors/<service>.json`, in format 1 of the contract
+(`.ade/context/connectors.md`, section 1): how the service is signed in to, its tier, the guard's prefixes and read
+list, the vendor's hosts and pages, and what it reaches. Nothing in a recipe is run, and nothing in it is a secret, a
+client id or anything that differs per user. `ade connect` (ade-cli) and the guard (story K6) read them; the `guard`
+plugin carries them and has no hook yet. `bash plugins/guard/scripts/check-recipe.sh <file>` checks one recipe against
+every rule of format 1 (exit 0 and no output, or exit 1 and one line naming the reason); it refuses an unknown field,
+kind, answer target or format rather than ignoring it. A release publishes each recipe as `connector-<service>.json`,
+with its sha256 in `release.json`. `tests/recipes.sh` checks them.
+
+- `clickup`: tier 0, ready. The `clickup` plugin; its read list is the plugin's `hooks/read-tools.txt`.
+- `jira`: tier 0, ready. The `jira` plugin; its read list is the plugin's `hooks/read-tools.txt`.
+- `linear`: tier 0, ready. The `linear` plugin; its read list is the plugin's `hooks/read-tools.txt`.
+- `github`: tier 2, ready. Through an existing `gh` sign-in; `gh` and `git` commands on the recipe's `free` list need
+  no question, its `deny` list (commands that print a credential) is refused. No MCP tools; the skill plugin is story K7.
+- `gmail`: tier 2, ready. Through the claude.ai Gmail connector (tools `mcp__claude_ai_Gmail__…`), behind one yes/no
+  question that the person has added it to their Claude account. Read list: `search_threads`, `get_thread`,
+  `get_message`, `list_labels`, `list_drafts`, `get_draft`. Every other tool asks, including `send_message`, `reply`
+  and `forward` (unlike Google's own server above, the connector can send mail) and `download_gmail_attachment` (it
+  brings a file onto the machine). The connector's tool list was seen in a live Claude Code session on 2026-11-22, not
+  taken from a vendor page: `search_threads`, `get_thread`, `get_message`, `list_labels`, `list_drafts`, `get_draft`,
+  `create_draft`, `update_draft`, `delete_draft`, `create_label`, `update_label`, `delete_label`, `label_message`,
+  `unlabel_message`, `label_thread`, `unlabel_thread`, `update_message_labels`, `send_message`, `reply`, `forward`,
+  `trash_message`, `untrash_message`, `trash_thread`, `untrash_thread`, `mark_message_spam`, `unmark_message_spam`,
+  `mark_thread_spam`, `unmark_thread_spam`, `apply_sensitive_message_label`, `apply_sensitive_thread_label`,
+  `download_gmail_attachment`. No connector pages yet: not confirmed on the day.
+- `slack`: tier 1, held: the owner decides whether Slack's published client id may sit in the plugin's `.mcp.json`.
+  No read list until the plugin exists, so every tool of `mcp__plugin_slack_slack__` asks.
+- `discord`: tier 3, held: story K3's question, and the local proxy for a person's own app is not built.
+- `outlook`: tier 4, held: a tenant administrator and an Entra app per tenant; Microsoft marks the server legacy.
+- `teams`: tier 4, held: as `outlook`.
+
+A held recipe whose plugin is not in this repo has an empty read list, so the guard would ask for each of its tools.
+The ClickUp claude.ai connector (`mcp__claude_ai_ClickUp__clickup_…`) is not in the `clickup` recipe: format 1 has one
+read list per recipe, held equal to the plugin's, and the connector's read tools were not confirmed on the day to be
+the same names, so its prefix is left out and its tools get no decision from the guard.

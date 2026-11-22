@@ -1,0 +1,47 @@
+{
+  "format": 1,
+  "service": "linear",
+  "title": "Linear",
+  "job": "tickets",
+  "tier": 0,
+  "state": "ready",
+  "sign_in": {
+    "kind": "plugin",
+    "plugin": "linear"
+  },
+  "questions": [],
+  "guard": {
+    "prefixes": [
+      "mcp__plugin_linear_linear__"
+    ],
+    "read": [
+      "get_document",
+      "get_issue",
+      "get_issue_git_branch_name",
+      "get_issue_status",
+      "get_project",
+      "get_team",
+      "get_user",
+      "list_comments",
+      "list_cycles",
+      "list_documents",
+      "list_issue_labels",
+      "list_issue_statuses",
+      "list_issues",
+      "list_my_issues",
+      "list_project_labels",
+      "list_projects",
+      "list_teams",
+      "list_users",
+      "search_documentation"
+    ]
+  },
+  "hosts": [
+    "mcp.linear.app"
+  ],
+  "pages": {
+    "docs": "https://linear.app/docs/mcp",
+    "revoke": "https://linear.app/docs/security-and-access"
+  },
+  "reaches": "The Linear workspace you sign in to, as you: issues, projects, cycles, documents, comments and labels; changes ask each time."
+}

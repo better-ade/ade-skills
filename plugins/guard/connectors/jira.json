@@ -1,0 +1,59 @@
+{
+  "format": 1,
+  "service": "jira",
+  "title": "Jira",
+  "job": "tickets",
+  "tier": 0,
+  "state": "ready",
+  "sign_in": {
+    "kind": "plugin",
+    "plugin": "jira"
+  },
+  "questions": [],
+  "guard": {
+    "prefixes": [
+      "mcp__plugin_jira_jira__"
+    ],
+    "read": [
+      "atlassianUserInfo",
+      "getAccessibleAtlassianResources",
+      "discover",
+      "getJiraIssue",
+      "listJiraProjects",
+      "listJiraProjectIssueTypesMetadata",
+      "getJiraIssueTypeMetaWithFields",
+      "listJiraIssueTransitions",
+      "listJiraIssueLinkTypes",
+      "listJiraIssueRemoteIssueLinks",
+      "listJiraIssueWorklogs",
+      "lookupJiraAccountId",
+      "listJiraIssueAssignableUsers",
+      "listJiraIssueComments",
+      "listJiraIssueChangelogs",
+      "getJiraCurrentUser",
+      "getJiraUser",
+      "listJiraStatuses",
+      "listJiraProjectComponents",
+      "getJiraProjectVersions",
+      "getJiraProjectVersionRelatedWork",
+      "listJiraBoards",
+      "getJiraBoardConfig",
+      "getJiraBoardIssueData",
+      "getJiraBoardSprintData",
+      "listJiraBoardSprints",
+      "listJiraFilters",
+      "listJiraDashboards",
+      "getJiraEntityProperty",
+      "downloadJiraIssueAttachment",
+      "searchJiraIssuesUsingJql"
+    ]
+  },
+  "hosts": [
+    "mcp.atlassian.com"
+  ],
+  "pages": {
+    "docs": "https://support.atlassian.com/atlassian-ai-gateway/docs/get-started-with-the-atlassian-remote-mcp-server/",
+    "revoke": "https://id.atlassian.com/manage-profile/apps"
+  },
+  "reaches": "Every Atlassian app you can reach on the sites you allow, with your permissions; changes ask each time."
+}

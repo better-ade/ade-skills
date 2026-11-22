@@ -14,6 +14,7 @@ request. Roles live in [ade-method](https://github.com/better-ade/ade-method) an
 | `clickup` | ClickUp's own hosted MCP server; the owner signs in through `/mcp`; a hook asks before any tool not on its read list |
 | `jira` | Atlassian's own hosted MCP server (Rovo MCP, v2) for Jira; the owner signs in through `/mcp`; a hook asks before any tool not on its read list |
 | `linear` | Linear's own hosted MCP server; the owner signs in through `/mcp`; a hook asks before any tool not on its read list |
+| `guard` | The connector recipes (`plugins/guard/connectors/<service>.json`) that `ade connect` and the guard read; the guard's hook is not in it yet (story K6) |
 
 ## Install
 
@@ -31,6 +32,10 @@ request. Roles live in [ade-method](https://github.com/better-ade/ade-method) an
 
 The connector plugins (`clickup`, `jira`, `linear`) hold no credential: each owner signs in themselves through
 `/mcp`. [docs/connectors.md](docs/connectors.md) gives each server's address, sign-in, sign-out, revocation and reach.
+
+Each connector, shipped or held, has a recipe in `plugins/guard/connectors/`: how it is signed in to, its tier and its
+read tools (`clickup`, `jira`, `linear`, `github`, `gmail`, `slack`, `discord`, `outlook`, `teams`; see
+[docs/connectors.md](docs/connectors.md), "Recipes (K5)").
 
 A project can offer them to teammates in its committed `.claude/settings.json` (`extraKnownMarketplaces`,
 `enabledPlugins`); each teammate still installs them on their own machine.
@@ -51,4 +56,4 @@ A project can offer them to teammates in its committed `.claude/settings.json` (
 `bash tests/run.sh`: manifests and names, a version in one place, `## Ask first` in every skill, pinned MCP packages,
 `claude plugin validate` on every plugin the marketplace lists (fails if `claude` is missing), the document-plugin
 conventions in [docs/conventions.md](docs/conventions.md), the connector checks (`tests/connectors.sh`: vendor servers
-only, no secret, the ask-first hook run on sample tool names), and a gitleaks scan.
+only, no secret, the ask-first hook run on sample tool names), the connector recipes (`tests/recipes.sh`), and a gitleaks scan.
