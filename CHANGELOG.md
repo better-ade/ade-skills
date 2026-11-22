@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.8.0
+
+- The guard (K6), to the contract's amendment 1: `guard` plugin 0.2.0 adds one `PreToolUse` hook (`hooks/guard.sh`
+  with its python3 helper `hooks/guard.py`, run through `bash`, `onFailure: "block"`) on `Bash` and on every prefix of
+  a `ready` recipe. `hooks/hooks.json` is generated from the recipes by `scripts/make-hooks.sh`; every recipe is
+  checked by `check-recipe.sh`'s own rules on every call. In a folder whose `.ade/connectors.json` names a ready
+  service, its reads need no question and every other tool asks (or is refused in `bypassPermissions`); where the
+  record does not name it, its tools ask, reads included. A `held` recipe (`slack`, `discord`, `outlook`, `teams`, and
+  `github` and `gmail` until K7) causes no decision. Where a ready `cli` recipe is named, `gh` and `git` pass only as
+  one plain command matching an entry's words, listed flags and arguments (`clickup`, `jira` and `linear` are
+  unaffected by that rule); `gh api` asks; the `deny` runs (`gh auth token`, `gh auth status -t`, `--show-token`,
+  `git credential fill`) are refused in every mode and folder; a positional that is a path outside the project folder
+  (or starts with `~`) makes a free command ask. `check-recipe.sh`'s folder mode now finds the hook files in an
+  installed copy's own `hooks/` folder (it refused every ready recipe outside the repository layout). The shipped
+  plugins' own hooks are unchanged. Anything the guard cannot read asks. `tests/guard.sh` checks it with a 285-row command table; `docs/connectors.md`, "The
+  guard (K6)", says what it does not see.
+
 ## 0.7.0
 
 - Connector recipes (K5): `guard` plugin 0.1.0 carries one recipe per service in `plugins/guard/connectors/`, format 1

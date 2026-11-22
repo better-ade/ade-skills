@@ -288,7 +288,7 @@ sys.exit(1 if bad else 0)
 PY
 }
 
-# AC7: the guard plugin carries the recipes, validates, is listed, says it holds the recipes, and has no hook yet (K6).
+# AC7: the guard plugin carries the recipes, validates, is listed, says it holds the recipes; its hook is K6's.
 recipes_plugin_valid() {
   local G="$R/plugins/guard"
   if command -v claude >/dev/null; then
@@ -306,8 +306,10 @@ if set(j) - {"name", "description", "version"}: bad.append(f"plugins/guard plugi
 m = [x for x in json.load(open(f"{R}/.claude-plugin/marketplace.json"))["plugins"] if x["name"] == "guard"]
 if not m or m[0].get("source") != "./plugins/guard": bad.append("marketplace.json does not list guard at ./plugins/guard")
 elif "recipes" not in m[0].get("description", ""): bad.append("marketplace.json: the guard description does not say it holds the recipes")
-for d in ["hooks", "skills", "commands", "agents", "bin"]:
-    if os.path.exists(f"{G}/{d}"): bad.append(f"plugins/guard/{d}: not part of K5 (the hook is story K6)")
+for d in ["skills", "commands", "agents", "bin"]:
+    if os.path.exists(f"{G}/{d}"): bad.append(f"plugins/guard/{d}: not part of the guard")
+hooks = sorted(os.listdir(f"{G}/hooks")) if os.path.isdir(f"{G}/hooks") else []
+if hooks != ["guard.py", "guard.sh", "hooks.json"]: bad.append(f"plugins/guard/hooks holds {hooks}, want the guard's hook (K6) only")
 for f in [".mcp.json", "hooks.json"]:
     if os.path.exists(f"{G}/{f}"): bad.append(f"plugins/guard/{f}: not part of K5")
 for n in os.listdir(f"{G}/connectors") if os.path.isdir(f"{G}/connectors") else []:

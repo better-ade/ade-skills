@@ -11,6 +11,6 @@
     { "name": "clickup", "source": "./plugins/clickup", "description": "ClickUp through ClickUp's own hosted MCP server; reads need no extra question; every change through this server asks, or is refused when prompts are switched off." },
     { "name": "jira", "source": "./plugins/jira", "description": "Jira through Atlassian's own hosted MCP server (Rovo MCP, v2); reads need no extra question; every change through this server asks, or is refused when prompts are switched off." },
     { "name": "linear", "source": "./plugins/linear", "description": "Linear through Linear's own hosted MCP server; reads need no extra question; every change through this server asks, or is refused when prompts are switched off." },
-    { "name": "guard", "source": "./plugins/guard", "description": "Holds the connector recipes that ade connect and the guard read (one per service: sign-in, tier, read tools); the guard's hook comes with story K6." }
+    { "name": "guard", "source": "./plugins/guard", "description": "The connector recipes that ade connect and the guard read, and the guard's hook: reads of a connected service are free, changes ask, gh and git pass only from the recipe's free list, credential-printing commands are refused." }
   ]
 }

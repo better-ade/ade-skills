@@ -70,6 +70,11 @@ the one answering prompts. It does not when:
 
 In those setups, a change goes ahead only on the owner's word in the conversation, never on an automatic answer.
 
+The same holds for the guard (K6): its `ask` is the same permission prompt, answered by whoever answers prompts for
+the session, and it turns into `deny` only in `bypassPermissions` mode. Its `deny` for a command that prints a
+credential holds in every mode, but a mod's `tool.check` approval or a deny-free host can still decide what the
+session does next; the guard cannot make a call safer than the one answering.
+
 ## `clickup`
 
 - Server: `https://mcp.clickup.com/mcp`
@@ -263,7 +268,7 @@ One data file per service, `plugins/guard/connectors/<service>.json`, in format 
 (`.ade/context/connectors.md`, section 1, with amendment 1): how the service is signed in to, its tier, the guard's
 prefixes and read list (or, for `gh` and `git`, the commands that need no question), the vendor's hosts and pages, and
 what it reaches. Nothing in a recipe is run, and nothing in it is a secret, a client id or anything that differs per
-user. `ade connect` (ade-cli) and the guard (story K6) read them; the `guard` plugin carries them and has no hook yet.
+user. `ade connect` (ade-cli) and the guard (story K6) read them; the `guard` plugin carries them, and its hook reads them ("The guard (K6)" below).
 
 `bash plugins/guard/scripts/check-recipe.sh <file>` checks one recipe; `bash plugins/guard/scripts/check-recipe.sh
 plugins/guard/connectors` checks the folder, every recipe and the rules across files, and is the full check. It exits 0
@@ -271,9 +276,8 @@ with no output, or 1 with one line naming the reason. It refuses an unknown fiel
 than ignoring it; refuses, never strips, text with control, format (direction marks, zero-width characters), surrogate,
 private-use or unassigned characters or line separators, and never prints them; reads only a regular file (no link, no
 FIFO). Across files: no prefix overlaps another recipe's, no two recipes share a connector or a plugin, one recipe per
-program, and no recipe is `ready` in a checkout without `plugins/guard/hooks/hooks.json` and `guard.sh` (story K6). On
-this branch alone, before K6, the folder check therefore refuses `clickup`, `jira` and `linear`; K5 and K6 are released
-together. A release publishes each recipe as `connector-<service>.json`, with its sha256 in `release.json`.
+program, and no recipe is `ready` in a checkout without `plugins/guard/hooks/hooks.json` and `guard.sh` (story K6). With
+the hook in place the folder check passes; K5 and K6 are released together. A release publishes each recipe as `connector-<service>.json`, with its sha256 in `release.json`.
 `tests/recipes.sh` checks them.
 
 A held recipe never makes the guard act: no matcher, no question, no refusal for its tools.
@@ -311,3 +315,180 @@ prefix (amendment 1), so a claude.ai connector for the same vendor (for example 
 is not in it. The card `ade connect` prints for a `plugin` service says so: "If you also add <title> as a connector to
 your Claude account, the guard does not cover that connector's tools: Claude Code's own permission settings decide for
 them, in every folder."
+
+## The guard (K6)
+
+`guard@ade-skills` carries the recipes and one `PreToolUse` hook that covers a `ready` connector's tools wherever its
+server is set up (an ade-skills plugin, a vendor's own plugin, a claude.ai connector) and `gh` and `git` run through
+the shell. It follows `.ade/context/connectors.md`, section 4, as changed by amendment 1. `tests/guard.sh` checks it.
+
+### How it runs
+
+- `hooks/hooks.json` is generated: `bash plugins/guard/scripts/make-hooks.sh > plugins/guard/hooks/hooks.json`. It
+  holds one group with the matcher `Bash` and one per prefix of a `ready` recipe, `<prefix>.*` (a `held` recipe gets
+  none), each with one hook `{"type": "command", "command": "bash", "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/guard.sh"],
+  "onFailure": "block"}`. The generator refuses a recipe `check-recipe.sh` refuses; a test regenerates the file and
+  fails when it differs.
+- `hooks/guard.sh` starts `hooks/guard.py` with `python3 -I` and passes on only `PASS` (no output, no decision) or one
+  JSON line with `ask` or `deny`; anything else, a missing `python3` or a missing helper prints `ask`. It never prints
+  `allow`, makes no network call and runs no program.
+- On every call the helper reads every recipe in its own plugin's `connectors/` folder and checks each with the rules
+  in `scripts/check-recipe.sh`, executed as they stand in the same process (not copied), then the cross-file rules of
+  section 1 that concern it (no prefix equal to or starting with another; no shared `sign_in.connector` or
+  `sign_in.plugin`; at most one recipe with `guard.commands.gh`, one with `.git`). A recipe it cannot read or that a
+  rule refuses, an empty or missing folder, a missing checker, or a call under a prefix `hooks.json` declares but no
+  recipe covers (a deleted recipe) ends in `ask`.
+- Cost: on the build Mac (Apple silicon, macOS 26, python3 3.14, bash 5.3) the whole hook process takes about 50 ms
+  per shell command (median of 50 runs of `ls -la`; p90 57 ms, max 61 ms), of which about 31 ms is starting python3
+  and 11 ms starting bash. Measured with a loop of `subprocess.run` timings of the declared command. The test's limit
+  is 250 ms median (about five times the figure, for slower or loaded machines).
+
+### The decisions, in order
+
+"Ask" is `permissionDecision` `ask`, or `deny` naming the mode when `permission_mode` is `bypassPermissions`.
+1. Input it cannot read (not JSON, not an object, `tool_name` or `permission_mode` not a string, no absolute `cwd`),
+   or a recipe folder that fails a check: ask.
+2. A tool under a prefix of a `ready` recipe. Record unreadable: ask. The record does not name the service: ask
+   (`<service> is not connected in this folder`), reads included. Named: a tool on `guard.read` gets no decision, any
+   other asks, naming the tool.
+3. Any other MCP tool, a `held` recipe's included, and any other tool: no decision.
+4. `Bash` (and `Monitor` commands, which a `Bash` matcher also receives): below.
+
+**The project folder** is the git top level (the nearest folder holding `.git`), else the folder itself, of
+`CLAUDE_PROJECT_DIR`. The hooks reference: "`${CLAUDE_PROJECT_DIR}`: the project root where the session started",
+exported to the hook "as the environment variables `CLAUDE_PROJECT_DIR`, `CLAUDE_PLUGIN_ROOT`, and
+`CLAUDE_PLUGIN_DATA`"; it "stays put" when Claude enters a worktree. The hook input has no project-directory field.
+Not set, or not absolute: ask (rule 1) wherever the folder is needed. The documentation does not say whether it is the
+git top level when Claude Code starts in a sub-folder, so the guard takes the git top level itself (section 3's rule).
+**The record** is `<project folder>/.ade/connectors.json`: absent, it names nothing; present but not a regular file
+(opened without following a link), over 64 KiB, or breaking section 3's rules, it is unreadable.
+**A shell command's working directory** (To confirm 12) is the input's `cwd`: "**`cwd` follows Claude**: the `cwd`
+field in the hook's input JSON is the worktree root after Claude enters a worktree, and the new directory after Claude
+runs `cd`" (hooks reference); the tools reference adds that a `cd` carries over to later commands while it stays inside
+the project or an added directory.
+
+### Shell commands
+
+The rule, in one paragraph: a command line cannot be parsed safely, so the guard is exact about what it lets through
+and best-effort about noticing. **Noticing** (4b): remove `'`, `"`, `\` and `$` and split on white space and
+`; & | ( ) < > = ` `` ` ``; a piece that is `gh` or `git`, ends in `/gh` or `/git`, starts with `GH_`, `GITHUB_` or
+`GIT_`, or is one of git's dashed programs (`git-<name>`) names that program. On top, a conservative shell lexer counts
+a word that could become one of them: through `$'...'` escapes (decoded), brace expansion, a glob (`g?`, `gi[t]`), a
+`${...}` with an operator, a word built from several parts (`$a$b`, `g$x`, `$x"h"`), a lone variable or substitution
+in command position, or quoted or substituted text that, read again as a command line, names them; a line the lexer
+cannot read names both. A line that names neither gets no decision: `echo ghost`, `cat ./gh-notes.md`, `ls .github`,
+`cat .gitignore`, `for i in {1..3}; do ...` do not ask; `echo gh` and `which git` do. **Deny** (4c): every `deny` run of
+every recipe, whatever its state and the record, for each program the line names: each element matches some piece, in
+any order; a long flag also matches its `=` form; a one-letter flag matches a cluster or attached form holding its
+letter (`-at`, `-tfoo`). A match is refused in every mode. **Scope** (4d): record unreadable: ask; where no `ready`
+`cli` recipe the record names has commands for a named program, no decision. **The allow-list** (4e), else ask: no
+newline or carriage return; outside quotes none of `; & | < > ( ) { } [ ] * ? ~ ! $ ` `` ` `` `\`, inside double
+quotes none of `$ ` `` ` `` `\ !`, inside single quotes anything; `shlex.split` succeeds; the first word is `gh` or
+`git` and the connected recipe has commands for it; no later word names `gh` or `git`; `cwd`, links resolved, is the
+project folder or inside it; `gh` takes no global option, `git` only `--no-pager` and `-C <dir>`, each once, `<dir>`
+not empty and inside the project folder; the entry whose `words` match the most next words applies; every later word is
+a listed flag (an item ending in `=` takes the next word, not starting with `-`, or for a `--` flag `F=<value>`), `--`
+where `args` is `any`, or a positional its `args` allows (`any`; `none`; `names`: `^[A-Za-z0-9][A-Za-z0-9._-]*$`, not
+`.` or `..`, and no file or folder of that name where git runs). No abbreviation and no cluster passes. **The path rule** (added here from the K5 sign-off; not yet in the contract's text):
+every positional of a command that would otherwise get no decision, after `--` included, must lie inside the project
+folder: a positional that starts with `~`, or that, joined to the directory the command runs in (the `-C` folder, else
+`cwd`) and resolved with links followed where they exist (a path that does not exist is judged by its text), lies
+outside the project folder, asks. So `git diff /etc/passwd /dev/null` (git's no-index fallback prints a whole outside
+file), `git diff ../../x`, `git blame ~/x`, `git grep pat ../..` and a path through a link that leads outside ask,
+while `git show HEAD:README.md`, `git diff -- src/a.c`, `git log -- <absolute path inside the project>`, revisions and
+branch names are untouched. Flag values (`--file=<path>`) are not paths to this rule.
+
+`tests/guard.sh` holds the table: 285 command lines with the expected result (265 in `TABLE`: 176 ask, 62 free
+shapes and 27 lines that cannot run them, both no decision; and 20 refused in every mode and in every folder), run against a fixture whose `cli` recipe is the contract's `github` example set to `ready`.
+Among them: a pipeline, `&&`, `||`, `;`, `&`, a newline, a carriage return, a subshell, a group, `$( )`, backticks,
+`sh -c`, `bash -c`, `zsh -c`, `eval`, `exec`, `command`, `builtin`, `env`, `nice`, `time`, `nohup`, `timeout`, `sudo`,
+`xargs`, `find -exec`, `watch`, a variable holding the name, an absolute, relative or `~` path, quotes and backslashes
+inside the name, `$'...'` with hex and octal escapes, brace expansion, globs, zsh's `=gh`, a here-document, a
+here-string, process substitution, redirection, an alias or function defined on the line, leading assignments and
+exports (`GH_HOST=x gh ...`, `export GIT_PAGER=...`), `git -c`, `git -C` outside the project, both sides of each quote
+rule (`-m "feat(x): y"` passes, `-m "hi!"` asks, `HEAD~1` asks and `"HEAD~1"` passes), abbreviations, clusters and
+missing values, the three `args` values, and the review's reproductions (`git remote -v add`, `git grep -O"<program>"`,
+`git log --output=`, `git fetch "--upload-pack=..."` and `--upload-pa=`, `git rebase -x"<program>"`,
+`gh pr list --json n --jq env`, `gh auth status -t` and `-at`).
+
+Consequences the decision record states: in a folder that names GitHub, `cd x && git status` asks (use `git -C x
+status`), and so does a commit message passed through `$(cat <<'EOF' ...)` (use `git commit -F <file>`).
+
+### What the guard does not see
+
+- Something that calls `gh` or `git` itself: a script, a program or a git hook (`./release.sh`, `make deploy`, a
+  `pre-push` hook, `python -c` building the name), and repository configuration that runs a program (`core.fsmonitor`,
+  `core.pager`, aliases, hooks), including a nested repository's own. The fence against a determined agent is the scope
+  of the credential, not this hook.
+- A name a program prints (`$(printf '\147h')`, `base64 -d`, `rev`), or a variable set outside the line other than in
+  command position or through a `GH_`, `GITHUB_` or `GIT_` name.
+- The user's own aliases and functions from the shell profile: Claude Code "sources `~/.zshrc` for Zsh or `~/.bashrc`
+  for Bash, and applies the aliases, functions, and shell options it captures to Bash commands" (tools reference). With
+  zsh's `EXTENDED_GLOB` on, unquoted `^` and `#` are glob operators the allow-list does not refuse (raised with the
+  architect).
+- The PowerShell tool: the guard matches `Bash` only, as the contract says; the tools reference says "Match
+  `Bash|PowerShell` in hooks that inspect shell commands". The tool is opt-in on macOS and Linux and on by default on
+  Windows; a PowerShell command runs `gh` unseen (raised with the architect).
+- MCP resources (read through `ReadMcpResourceTool`, not a tool of the server), servers no recipe names, a `held`
+  recipe's tools, and a vendor server added by hand under another name (the doctor check's to find).
+- What a free command prints as stored: `git remote -v` and `git remote get-url` print each remote URL as written,
+  including a token if someone embedded one in it.
+- `gh ... -R HOST/OWNER/REPO` (and `--repo`) on a free reading shape can send a request to a host named on the command
+  line.
+- A token a file holds (`cat ~/.config/gh/hosts.yml` when `gh` keeps it in a plain file), and git's credential helpers
+  run directly (`git credential-osxkeychain get` asks where GitHub is connected and gets no decision elsewhere; the
+  `deny` list holds only `credential fill`).
+- Who answers its questions: see "When the owner is not the one answering" above; the guard's `ask` reaches the owner
+  only when the owner answers the session's prompts.
+
+### Facts from Claude Code's documentation (read on 2026-11-22)
+
+- Input: a `PreToolUse` hook for a Bash command receives `"tool_name": "Bash"` and `"tool_input": {"command": ...}`,
+  with `cwd` and `permission_mode`, whose values are `"default"`, `"plan"`, `"acceptEdits"`, `"auto"`, `"dontAsk"`, or
+  `"bypassPermissions"` (hooks reference, "Common input fields").
+- Output: `permissionDecision` `"ask"` "prompts the user to confirm", `"deny"` "prevents the tool call", inside
+  `hookSpecificOutput` with `permissionDecisionReason`. Auto mode keeps a hook's prompt: "auto mode still shows you
+  those prompts" (permission modes).
+- Matchers: a matcher of "only letters, digits, `_`, `-`, spaces, `,`, and `|`" is an exact name (`Bash` also matches
+  Monitor commands); anything else is a "JavaScript regular expression, unanchored". One group can list several names
+  or an alternation; the generator writes one group per prefix, as the contract says.
+- `onFailure`: "To block the action instead, set `"onFailure": "block"`... Requires Claude Code v2.1.295 or later";
+  can't start, an exit code other than 0 or 2, a timeout and invalid output all count as failures.
+- Timeout: "Defaults: 600 for `command`". The guard's hooks set none (the contract's hook object has none), so a hung
+  helper would hold a call for up to ten minutes and then block it.
+- Several hooks: "When an event fires, its matching hooks run in parallel", and "When multiple PreToolUse hooks return
+  different decisions, precedence is `deny` > `defer` > `ask` > `allow`." A plugin's ask prompt carries the label
+  `[plugin:<name>]`.
+
+### To confirm 9, 12 and 14 (read on 2026-11-22)
+
+- 12, a shell command's working directory: the input's `cwd` (hooks reference, quoted above: "the new directory after
+  Claude runs `cd`"). The guard uses it for rule 4e.5 and to resolve `git -C`.
+- 9, abbreviations: `gh` 2.88.0 does not accept an abbreviated long flag (`gh --versio` prints `unknown flag:
+  --versio`), so the deny runs need no abbreviated forms; one-letter clusters and `=` forms are matched (rule 4c).
+  Flags before the subcommand words are matched too, since a deny run's elements match in any order. git's credential
+  helpers: gitcredentials(7) says a helper string without `!` or an absolute path becomes `git credential-<helper>`
+  with an operation appended, and the `get` operation returns the stored credential. So `git credential-osxkeychain
+  get` (and `-store`, `-cache`, `-manager`) prints a password, and the `deny` list (only `credential fill`) does not
+  refuse it: where GitHub is connected it asks, elsewhere it gets no decision. Proposed for the recipe: deny runs such
+  as `["credential-osxkeychain", "get"]`, one per helper (raised with K5).
+- 14, shadowing: git ignores aliases that hide a built-in ("To avoid confusion and troubles with script usage,
+  aliases that hide existing Git commands are ignored", git-config(1), `alias.*`); a `gh` extension "cannot override
+  any of the core gh commands" (the `gh extension` manual). The `gh alias set` manual is silent on whether an alias
+  can take a built-in's name; not tried here, since that would write the user's `gh` config. An alias is configuration
+  written outside the command line, so it falls under the stated limits either way.
+
+### When both hooks ask about one call
+
+For `clickup`, `jira` and `linear` the guard and the plugin's own `ask-unless-read.sh` both match each tool. The
+documentation gives the precedence for different decisions and is silent on two hooks that both return `ask`: it does
+not say whether that is one prompt or two, or whose reason and label it shows. Read with the precedence rule, the
+decisions combine into one outcome for the call, so one permission prompt; this was not confirmed in a live session
+(that needs a signed-in plugin; owner check step 7). The guard keeps those prefixes, the safe choice: both hooks
+decide from the same list (a test holds `guard.read` equal to `read-tools.txt` and runs both hooks on the same calls,
+and they agree in every mode once the folder names the service), so whichever reason is shown names the tool, and the
+guard adds the folder rule, which the plugin's hook does not have. Where one asks and the other says nothing, the call
+asks. The shipped hooks are unchanged (a test pins their files).
+
+Owner check, step 7 (with the guard installed beside `jira`): ask for one change and count the prompts; record whether
+one or two appear and which label they carry.
