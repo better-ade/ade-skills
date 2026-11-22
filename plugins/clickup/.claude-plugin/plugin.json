@@ -1,0 +1,1 @@
+{ "name": "clickup", "description": "ClickUp through ClickUp's own hosted MCP server: read tasks, docs and comments; every change asks the owner first.", "version": "0.1.0" }

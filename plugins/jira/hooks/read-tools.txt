@@ -1,0 +1,36 @@
+# Atlassian MCP server (v2) tools from Atlassian's Supported tools page
+# (support.atlassian.com/atlassian-ai-gateway/docs/supported-tools/), read 2026-11-22: the common read tools and the
+# read_jira and search_jira permission groups. Left off on purpose, so they ask: executeRead, executeWrite and
+# executeDestructive (they run other tools), Confluence, Bitbucket, Loom and other products' tools (this plugin is for
+# Jira), and every Enriched tool (they spend Rovo credits). One name per line, exact.
+atlassianUserInfo
+getAccessibleAtlassianResources
+discover
+getJiraIssue
+listJiraProjects
+listJiraProjectIssueTypesMetadata
+getJiraIssueTypeMetaWithFields
+listJiraIssueTransitions
+listJiraIssueLinkTypes
+listJiraIssueRemoteIssueLinks
+listJiraIssueWorklogs
+lookupJiraAccountId
+listJiraIssueAssignableUsers
+listJiraIssueComments
+listJiraIssueChangelogs
+getJiraCurrentUser
+getJiraUser
+listJiraStatuses
+listJiraProjectComponents
+getJiraProjectVersions
+getJiraProjectVersionRelatedWork
+listJiraBoards
+getJiraBoardConfig
+getJiraBoardIssueData
+getJiraBoardSprintData
+listJiraBoardSprints
+listJiraFilters
+listJiraDashboards
+getJiraEntityProperty
+downloadJiraIssueAttachment
+searchJiraIssuesUsingJql

@@ -1,0 +1,22 @@
+# Linear MCP server read tools. Linear's MCP page (linear.app/docs/mcp, read 2026-11-22) does not list tool names, so
+# these are the server's known get, list and search tools, not confirmed on the day: compare them with the list /mcp
+# shows after signing in. A name missing here only asks; a tool not listed here asks first. One name per line, exact.
+get_document
+get_issue
+get_issue_git_branch_name
+get_issue_status
+get_project
+get_team
+get_user
+list_comments
+list_cycles
+list_documents
+list_issue_labels
+list_issue_statuses
+list_issues
+list_my_issues
+list_project_labels
+list_projects
+list_teams
+list_users
+search_documentation

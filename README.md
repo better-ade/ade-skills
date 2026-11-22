@@ -11,6 +11,10 @@ request. Roles live in [ade-method](https://github.com/better-ade/ade-method) an
 | `ade` | Slash commands for the `ade` CLI (status, work, dispatch, notify, specialists, plugins); risky ones ask the owner |
 | `notes` | Meeting notes, summaries, action items, digests and captures in the named hub folder, each point with its source |
 | `fde` | Forward deployed engineering documents (discovery, proposal, SOW, change request, design doc, workflow, status report, handover) from the customer's constraints; prices, dates and terms left blank |
+| `clickup` | ClickUp's own hosted MCP server; the owner signs in through `/mcp`; a hook asks before any tool not on its read list |
+| `jira` | Atlassian's own hosted MCP server (Rovo MCP, v2) for Jira; the owner signs in through `/mcp`; a hook asks before any tool not on its read list |
+| `linear` | Linear's own hosted MCP server; the owner signs in through `/mcp`; a hook asks before any tool not on its read list |
+| `github` | GitHub's own hosted MCP server; the owner signs in through `/mcp`; a hook asks before any tool not on its read list |
 
 ## Install
 
@@ -21,7 +25,14 @@ request. Roles live in [ade-method](https://github.com/better-ade/ade-method) an
 /plugin install ade@ade-skills
 /plugin install notes@ade-skills
 /plugin install fde@ade-skills
+/plugin install clickup@ade-skills
+/plugin install jira@ade-skills
+/plugin install linear@ade-skills
+/plugin install github@ade-skills
 ```
+
+The connector plugins (`clickup`, `jira`, `linear`, `github`) hold no credential: each owner signs in themselves through
+`/mcp`. [docs/connectors.md](docs/connectors.md) gives each server's address, sign-in, sign-out, revocation and reach.
 
 A project can offer them to teammates in its committed `.claude/settings.json` (`extraKnownMarketplaces`,
 `enabledPlugins`); each teammate still installs them on their own machine.
@@ -41,4 +52,5 @@ A project can offer them to teammates in its committed `.claude/settings.json` (
 
 `bash tests/run.sh`: manifests and names, a version in one place, `## Ask first` in every skill, pinned MCP packages,
 `claude plugin validate` on every plugin the marketplace lists (fails if `claude` is missing), the document-plugin
-conventions in [docs/conventions.md](docs/conventions.md), and a gitleaks scan.
+conventions in [docs/conventions.md](docs/conventions.md), the connector checks (`tests/connectors.sh`: vendor servers
+only, no secret, the ask-first hook run on sample tool names), and a gitleaks scan.
