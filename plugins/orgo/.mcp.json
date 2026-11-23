@@ -1,0 +1,5 @@
+{
+  "mcpServers": {
+    "orgo": { "type": "http", "url": "https://www.orgo.ai/mcp" }
+  }
+}

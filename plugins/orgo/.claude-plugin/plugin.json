@@ -1,0 +1,1 @@
+{ "name": "orgo", "description": "Orgo cloud computers through Orgo's own hosted MCP server: read the workspace, its computers, screens and files; everything else through this server (creating or starting a computer, running a command, controlling a desktop) asks, or is refused when prompts are switched off.", "version": "0.1.0" }
