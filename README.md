@@ -15,7 +15,7 @@ request. Roles live in [ade-method](https://github.com/better-ade/ade-method) an
 | `jira` | Atlassian's own hosted MCP server (Rovo MCP, v2) for Jira; the owner signs in through `/mcp`; a hook asks before any tool not on its read list |
 | `linear` | Linear's own hosted MCP server; the owner signs in through `/mcp`; a hook asks before any tool not on its read list |
 | `orgo` | Orgo's own hosted MCP server for cloud computers; the owner signs in through `/mcp` and chooses the workspace; a hook asks before any tool not on its read list, says when a computer will be billed by the hour, and shows a command before it runs. Also: install ADE on an Orgo computer: ask your main agent |
-| `guard` | The connector recipes (`plugins/guard/connectors/<service>.json`) that `ade connect` and the guard read; the guard's hook is not in it yet (story K6) |
+| `guard` | The connector recipes (`plugins/guard/connectors/<service>.json`) that `ade connect` and the guard read; and the guard's hook over their tools and `gh` and `git` (story K6; docs/connectors.md, "The guard (K6)") |
 
 ## Install
 
@@ -63,4 +63,4 @@ A project can offer them to teammates in its committed `.claude/settings.json` (
 conventions in [docs/conventions.md](docs/conventions.md), the connector checks (`tests/connectors.sh`: vendor servers
 only, no secret, the ask-first hook run on sample tool names), the Orgo connector's checks (`tests/orgo.sh`: the remote
 server only, its read list, the hook's question run on made-up and hostile tool input), the connector recipes
-(`tests/recipes.sh`), and a gitleaks scan.
+(`tests/recipes.sh`), the guard's hook (`tests/guard.sh`), and a gitleaks scan.

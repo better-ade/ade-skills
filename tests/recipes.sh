@@ -292,7 +292,7 @@ sys.exit(1 if bad else 0)
 PY
 }
 
-# AC7: the guard plugin carries the recipes, validates, is listed, says it holds the recipes, and has no hook yet (K6).
+# AC7: the guard plugin carries the recipes, validates, is listed, says it holds the recipes; its hook is K6's.
 recipes_plugin_valid() {
   local G="$R/plugins/guard"
   if command -v claude >/dev/null; then
@@ -310,8 +310,10 @@ if set(j) - {"name", "description", "version"}: bad.append(f"plugins/guard plugi
 m = [x for x in json.load(open(f"{R}/.claude-plugin/marketplace.json"))["plugins"] if x["name"] == "guard"]
 if not m or m[0].get("source") != "./plugins/guard": bad.append("marketplace.json does not list guard at ./plugins/guard")
 elif "recipes" not in m[0].get("description", ""): bad.append("marketplace.json: the guard description does not say it holds the recipes")
-for d in ["hooks", "skills", "commands", "agents", "bin"]:
-    if os.path.exists(f"{G}/{d}"): bad.append(f"plugins/guard/{d}: not part of K5 (the hook is story K6)")
+for d in ["skills", "commands", "agents", "bin"]:
+    if os.path.exists(f"{G}/{d}"): bad.append(f"plugins/guard/{d}: not part of the guard")
+hooks = sorted(os.listdir(f"{G}/hooks")) if os.path.isdir(f"{G}/hooks") else []
+if hooks != ["guard.py", "guard.sh", "hooks.json"]: bad.append(f"plugins/guard/hooks holds {hooks}, want the guard's hook (K6) only")
 for f in [".mcp.json", "hooks.json"]:
     if os.path.exists(f"{G}/{f}"): bad.append(f"plugins/guard/{f}: not part of K5")
 for n in os.listdir(f"{G}/connectors") if os.path.isdir(f"{G}/connectors") else []:
@@ -483,7 +485,7 @@ git reset | --soft --mixed --hard --keep | any
 git mv | -f -k | any
 git rm | -r -f --cached | any
 git clean | -n --dry-run -f --force -d -fd -df -nd -dn | any
-git branch | -a --all -r --remotes -v -vv --verbose --show-current --list -d --delete -D -m --move -M -c --copy -u= --set-upstream-to= --unset-upstream | any
+git branch | -a --all -r --remotes -v -vv --verbose --show-current --list -d --delete -D -m --move -M -c --copy --unset-upstream | any
 git tag | -l --list -a --annotate -m= --message= -d --delete | any
 git stash | -u --include-untracked -m= --message= | none
 git stash push | -u --include-untracked --staged -m= --message= | any
@@ -537,7 +539,11 @@ for prog in ["gh", "git"]:
         if prog == "git" and set(fl) & PER_ENTRY.get(tuple(w), set()): bad.append(f"github: git {' '.join(w)} lists {sorted(set(fl) & PER_ENTRY[tuple(w)])}, which there is interactive or runs a program")
         if prog == "git" and w == ["remote"] and e.get("args") != "none": bad.append("github: git remote must say args none")
         if prog == "git" and w in (["fetch"], ["pull"]) and e.get("args") != "names": bad.append(f"github: git {w[0]} must say args names")
-DENY = {"gh": [["auth", "token"], ["auth", "status", "--show-token"], ["auth", "status", "-t"]], "git": [["credential", "fill"]]}
+DENY = {"gh": [["auth", "token"], ["auth", "status", "--show-token"], ["auth", "status", "-t"], ["auth", "git-credential"],
+               ["config", "get", "oauth_token"]],
+        "git": [["credential", "fill"], ["credential-osxkeychain", "get"], ["credential-store", "get"],
+                ["credential-cache", "get"], ["credential-manager", "get"], ["credential-manager-core", "get"],
+                ["credential-libsecret", "get"], ["credential-oauth", "get"], ["credential-wincred", "get"]]}
 for prog, runs in DENY.items():
     have = cmds.get(prog, {}).get("deny", []) if isinstance(cmds.get(prog), dict) else []
     for run in runs:

@@ -60,7 +60,7 @@ PLUGIN_PREFIX = re.compile(rf"mcp__plugin_({NAME})_([A-Za-z0-9-]{{1,40}})__")
 TOOL = re.compile(r"[A-Za-z][A-Za-z0-9_-]{0,127}")
 WORD = re.compile(r"[a-z][a-z0-9-]*")                # a free entry's words; a deny word
 FLAG = re.compile(r"(-[A-Za-z0-9]+|--[a-z0-9][a-z0-9-]*)(=[A-Za-z0-9._,-]*)?")
-DENY_ELEMENT = re.compile(r"[a-z][a-z0-9-]*|-[A-Za-z0-9]|--[a-z0-9][a-z0-9-]*")
+DENY_ELEMENT = re.compile(r"[a-z][a-z0-9_-]*|-[A-Za-z0-9]|--[a-z0-9][a-z0-9-]*")   # _ for oauth_token (K6)
 HOST = re.compile(r"(?=.{1,253}$)[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+")
 URL = re.compile(r"https://([a-z0-9.-]+)(/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*)?")
 HOOK_FILES = ["plugins/guard/hooks/hooks.json", "plugins/guard/hooks/guard.sh"]
@@ -205,8 +205,9 @@ def check(r, service_from_file, root):
             if r["state"] != "held": no(f"state is ready, but plugins/{s['plugin']} does not exist")
             if read: no(f"guard.read names tools, but plugins/{s['plugin']} (and its read-tools.txt) does not exist")
 
-def across(recipes, root):
-    # recipes: {service: recipe}, each already valid on its own. A failure here refuses the whole folder.
+def across(recipes, root, plugin=None):
+    # recipes: {service: recipe}, each already valid on its own. A failure here refuses the whole folder. root: the
+    # checkout, in the repo layout; plugin: the guard plugin folder holding connectors/ (an installed copy, K6).
     for key in ["connector", "plugin"]:
         seen = {}
         for s, r in sorted(recipes.items()):
@@ -221,7 +222,12 @@ def across(recipes, root):
     for prog in sorted(PROGRAMS):
         have = [s for s, r in sorted(recipes.items()) if prog in r["guard"].get("commands", {})]
         if len(have) > 1: no(f"guard.commands.{prog} is in more than one recipe: {', '.join(have)}")
-    missing = [f for f in HOOK_FILES if not os.path.isfile(os.path.join(root, f))] if root is not None else HOOK_FILES
+    if root is not None:
+        missing = [f for f in HOOK_FILES if not os.path.isfile(os.path.join(root, f))]
+    elif plugin is not None:   # outside the repo layout (an installed plugin): its own hooks/ folder
+        missing = [f for f in ("hooks/hooks.json", "hooks/guard.sh") if not os.path.isfile(os.path.join(plugin, f))]
+    else:
+        missing = HOOK_FILES
     ready = [s for s, r in sorted(recipes.items()) if r["state"] == "ready"]
     if missing and ready:
         no(f"{', '.join(ready)} {'is' if len(ready) == 1 else 'are'} ready, but this checkout has no {missing[0]} "
@@ -279,7 +285,7 @@ try:
                 f = os.path.join(full, n)
                 if not n.endswith(".json"): no(f"{show(n)} is not a recipe (only <service>.json belongs here)")
                 recipes[n[:-5]] = check_file(f, root)
-            across(recipes, root)
+            across(recipes, root, os.path.dirname(full))
         elif os.path.islink(full) and os.path.isdir(full):
             no("the folder is a symlink")
         else:
