@@ -15,6 +15,7 @@ request. Roles live in [ade-method](https://github.com/better-ade/ade-method) an
 | `jira` | Atlassian's own hosted MCP server (Rovo MCP, v2) for Jira; the owner signs in through `/mcp`; a hook asks before any tool not on its read list |
 | `linear` | Linear's own hosted MCP server; the owner signs in through `/mcp`; a hook asks before any tool not on its read list |
 | `orgo` | Orgo's own hosted MCP server for cloud computers; the owner signs in through `/mcp` and chooses the workspace; a hook asks before any tool not on its read list, says when a computer will be billed by the hour, and shows a command before it runs. Also: install ADE on an Orgo computer: ask your main agent |
+| `guard` | The connector recipes (`plugins/guard/connectors/<service>.json`) that `ade connect` and the guard read; and the guard's hook over their tools and `gh` and `git` (story K6; docs/connectors.md, "The guard (K6)") |
 
 ## Install
 
@@ -37,6 +38,9 @@ The connector plugins (`clickup`, `jira`, `linear`, `orgo`) hold no credential: 
 Orgo: sign in through `/mcp`, choose the workspace; agents can read freely, and ask before creating computers, running
 commands or controlling a desktop. Orgo bills a computer by the hour while it runs. To revoke access, open Orgo's
 Settings, Security, Connected AI apps, and disconnect it.
+Each connector, shipped or held, has a recipe in `plugins/guard/connectors/`: how it is signed in to, its tier and its
+read tools (`clickup`, `jira`, `linear`, `github`, `gmail`, `slack`, `discord`, `outlook`, `teams`; see
+[docs/connectors.md](docs/connectors.md), "Recipes (K5)").
 
 A project can offer them to teammates in its committed `.claude/settings.json` (`extraKnownMarketplaces`,
 `enabledPlugins`); each teammate still installs them on their own machine.
@@ -58,4 +62,5 @@ A project can offer them to teammates in its committed `.claude/settings.json` (
 `claude plugin validate` on every plugin the marketplace lists (fails if `claude` is missing), the document-plugin
 conventions in [docs/conventions.md](docs/conventions.md), the connector checks (`tests/connectors.sh`: vendor servers
 only, no secret, the ask-first hook run on sample tool names), the Orgo connector's checks (`tests/orgo.sh`: the remote
-server only, its read list, the hook's question run on made-up and hostile tool input), and a gitleaks scan.
+server only, its read list, the hook's question run on made-up and hostile tool input), the connector recipes
+(`tests/recipes.sh`), the guard's hook (`tests/guard.sh`), and a gitleaks scan.

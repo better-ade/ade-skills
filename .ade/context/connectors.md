@@ -51,6 +51,32 @@ Each line names the story that acts on it. Sections below hold the exact rule.
     `safe.bareRepository=explicit` (section 4, stated limits).
 13. (K5, K6, A17) To confirm 4, 6 and 9 changed; 12 to 17 are new.
 
+## Recorded by the K6 fix round (2026-11-23), for the architect to confirm
+
+The adversarial review of the guard (pull request #18) changed what was built against this contract in the places
+below. The sections that follow still hold amendment 1's text; where they differ, this list is what ships, until the
+architect folds it in or settles it otherwise. ade-cli (A16) must take points 1 and 2 before it checks a recipe.
+1. **A `deny` element** may hold `_`: a word is `^[a-z][a-z0-9_-]*$` (for `oauth_token`). Flags are unchanged.
+2. **The `github` recipe's `deny` lists** are, for `gh`: `["auth","token"]`, `["auth","status","--show-token"]`,
+   `["auth","status","-t"]`, `["auth","git-credential"]`, `["config","get","oauth_token"]`; for `git`:
+   `["credential","fill"]` and `["credential-<helper>","get"]` for `osxkeychain`, `store`, `cache`, `manager`,
+   `manager-core`, `libsecret`, `oauth`, `wincred`. Its `branch` entry no longer lists `-u=` and
+   `--set-upstream-to=` (they ask). The shipped recipe is the reference; the example in section 1 is amendment 1's.
+3. **The hook object** carries `"timeout": 10` (seconds), next to `"onFailure": "block"`.
+4. **Rule 4b** notices more: pieces are split on every character outside `[A-Za-z0-9_./-]` and compared in lower
+   case; `gh`'s `config.yml` and `hosts.yml`, and git's `.git/`, `.git`, `.gitconfig`, `.gitmodules`,
+   `.git-credentials` and `git/credentials` paths name the program, also through a glob or a brace.
+5. **Rule 4c** refuses on the words of the line: unquoted words, substitutions, a flag before a quoted value, an
+   assignment's value, and quoted text or a here-document when a shell, `eval`, `alias`, `trap`, `watch`, `ssh` or
+   `su` is on the line; a word compares in any case; one element of a run may be what a glob or a brace can become.
+   A run found only in other quoted text, a here-document or a flag's value **asks**, in every folder (deny under
+   `bypassPermissions`). This narrows "left open" point 12 of the decision record: a commit message that mentions a
+   run is a question, no longer a refusal.
+6. **Rule 4e**: a word may not start with `=` (zsh's `=cmd`); `-<n>` is accepted on `git log`, `shortlog` and
+   `rev-list`; the values of `-F` and `--file` go through the path rule; the path rule itself (a positional outside
+   the project folder, or starting with `~`, asks) is still not in section 4's text.
+The exact rules and their tests: `docs/connectors.md`, "The guard (K6)", and `tests/guard.sh`.
+
 ## 1. Recipes
 
 One file per service: `plugins/guard/connectors/<service>.json` in ade-skills. The `guard` plugin carries them, because

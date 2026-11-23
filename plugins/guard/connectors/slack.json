@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "service": "slack",
+  "title": "Slack",
+  "job": "chat",
+  "tier": 1,
+  "state": "held",
+  "held": "The owner has not decided whether Slack's published client id may be written into the plugin's .mcp.json.",
+  "sign_in": {
+    "kind": "plugin",
+    "plugin": "slack"
+  },
+  "questions": [],
+  "guard": {
+    "prefixes": [
+      "mcp__plugin_slack_slack__"
+    ],
+    "read": []
+  },
+  "hosts": [
+    "mcp.slack.com"
+  ],
+  "pages": {
+    "docs": "https://docs.slack.dev/ai/slack-mcp-server"
+  },
+  "reaches": "The Slack workspace you sign in to, as you: channels, threads, messages, files and people."
+}

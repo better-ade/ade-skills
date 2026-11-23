@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "service": "outlook",
+  "title": "Outlook",
+  "job": "mail",
+  "tier": 4,
+  "state": "held",
+  "held": "Needs a tenant administrator and an Entra app per tenant, and Microsoft marks its Agent 365 Mail server legacy.",
+  "sign_in": {
+    "kind": "plugin",
+    "plugin": "outlook",
+    "admin": "Register a Microsoft Entra app for this tenant and turn on the Agent 365 Mail server for it."
+  },
+  "questions": [],
+  "guard": {
+    "prefixes": [
+      "mcp__plugin_outlook_outlook__"
+    ],
+    "read": []
+  },
+  "hosts": [
+    "agent365.svc.cloud.microsoft"
+  ],
+  "pages": {
+    "docs": "https://learn.microsoft.com/en-us/microsoft-copilot-studio/mcp-mail-tools"
+  },
+  "reaches": "The Microsoft 365 mailbox you sign in to: reading, drafting, sending, replying and deleting mail."
+}

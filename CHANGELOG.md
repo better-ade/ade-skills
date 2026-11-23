@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.9.0
+
+- The guard (K6), to the contract's amendment 1: `guard` plugin 0.2.0 adds one `PreToolUse` hook (`hooks/guard.sh`
+  with its python3 helper `hooks/guard.py`, run through `bash`, `onFailure: "block"`) on `Bash` and on every prefix of
+  a `ready` recipe. `hooks/hooks.json` is generated from the recipes by `scripts/make-hooks.sh`; every recipe is
+  checked by `check-recipe.sh`'s own rules on every call. In a folder whose `.ade/connectors.json` names a ready
+  service, its reads need no question and every other tool asks (or is refused in `bypassPermissions`); where the
+  record does not name it, its tools ask, reads included. A `held` recipe (`slack`, `discord`, `outlook`, `teams`, and
+  `github` and `gmail` until K7) causes no decision. Where a ready `cli` recipe is named, `gh` and `git` pass only as
+  one plain command matching an entry's words, listed flags and arguments (`clickup`, `jira` and `linear` are
+  unaffected by that rule); `gh api` asks; the `deny` runs (`gh auth token`, `gh auth status -t`, `--show-token`,
+  `git credential fill`, `gh auth git-credential`, `gh config get oauth_token`, git's `credential-<helper> get` for
+  eight helpers) are refused in every mode and folder, also when a shell on the line reads them from quoted text
+  (`sh -c '...'`, `eval`, a here-document into `sh`), when a variable holds them, or when a glob or a brace can become
+  the missing word (`gh auth t*`); a mention of one inside other quotes or a here-document asks; names are compared in
+  any case, an unquoted expansion splits words, and a shell command that touches git's or gh's configuration or
+  stored-credentials files counts as naming them; a positional that is a path outside the project folder (or starts with `~`) makes a free
+  command ask. The hook has a 10 s timeout. `check-recipe.sh`'s folder mode now finds the hook files in an
+  installed copy's own `hooks/` folder (it refused every ready recipe outside the repository layout). The shipped
+  plugins' own hooks are unchanged. Anything the guard cannot read asks. `tests/guard.sh` checks it with a 407-row command table; `docs/connectors.md`, "The
+  guard (K6)", says what it does not see.
+
+## 0.8.0
+
+- Connector recipes (K5): `guard` plugin 0.1.0 carries one recipe per service in `plugins/guard/connectors/`, format 1
+  of `.ade/context/connectors.md` (amendment 1), for `ade connect` and the guard (its hook is story K6; K5 and K6 are
+  released together). Ready with the guard's hook: `clickup`, `jira`, `linear` (tier 0, read lists equal to each
+  plugin's `read-tools.txt`). Held: `github` and `gmail` (tier 2, until the guard's hook and their skills ship; `github`
+  lists the `gh` and `git` commands that need no question, each with its own flags), `slack` (tier 1), `discord`
+  (tier 3), `outlook` and `teams` (tier 4). `plugins/guard/scripts/check-recipe.sh` checks one recipe or the folder;
+  `tests/recipes.sh` checks them all. Each release attaches every recipe as `connector-<service>.json`, hashed in
+  `release.json`.
+
 ## 0.7.0
 
 - `orgo` plugin 0.1.0 (K8): Orgo's own hosted MCP server for cloud computers (`https://www.orgo.ai/mcp`, http, signed

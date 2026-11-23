@@ -1,0 +1,23 @@
+{
+  "format": 1,
+  "service": "discord",
+  "title": "Discord",
+  "job": "chat",
+  "tier": 3,
+  "state": "held",
+  "held": "Discord publishes no MCP server of its own; story K3's question is open, and the local proxy for your own app is not built.",
+  "sign_in": {
+    "kind": "plugin",
+    "plugin": "discord"
+  },
+  "questions": [],
+  "guard": {
+    "prefixes": [
+      "mcp__plugin_discord_discord__"
+    ],
+    "read": []
+  },
+  "hosts": [],
+  "pages": {},
+  "reaches": "The Discord servers your own bot is invited to: channels and messages."
+}

@@ -27,7 +27,7 @@ for root, _, files in os.walk("plugins"):
 print("\n".join("FAIL: " + b for b in bad)) if bad else None
 sys.exit(1 if bad else 0)
 PY
-for t in validate docs meta ade notes fde connectors orgo; do bash "tests/$t.sh" || rc=1; done
+for t in validate docs meta ade notes fde connectors orgo recipes guard; do bash "tests/$t.sh" || rc=1; done
 if command -v gitleaks >/dev/null; then gitleaks dir . --no-banner --redact --log-level warn >/dev/null || fail "gitleaks found a secret"
 else echo "note: gitleaks not installed, secret scan skipped"; fi
 [ $rc = 0 ] && echo ok; exit $rc

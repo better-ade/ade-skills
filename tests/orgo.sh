@@ -315,8 +315,11 @@ def orgo_docs():
     if "`orgo`" not in oc or f"{ROOT}/hooks/read-tools.txt" not in oc: fail(c, "docs/connectors.md: 'Owner check' has no orgo step comparing the tools with its read-tools.txt")
     v = text("VERSION").strip()
     if tuple(map(int, v.split("."))) <= (0, 6, 0): fail(c, f"VERSION {v} is not raised above 0.6.0")
-    m = re.search(rf"^## {re.escape(v)}\n(.*?)(?=^## |\Z)", text("CHANGELOG.md"), re.S | re.M)
-    if not m or "`orgo`" not in m.group(1) or "K8" not in m.group(1): fail(c, f"CHANGELOG.md: no '## {v}' entry recording `orgo` (K8)")
+    # The entry sits under the version that shipped the plugin (0.7.0); later versions raise VERSION past it.
+    secs = re.findall(r"^## (\d+\.\d+\.\d+)\n(.*?)(?=^## |\Z)", text("CHANGELOG.md"), re.S | re.M)
+    if not re.search(rf"^## {re.escape(v)}\n", text("CHANGELOG.md"), re.M): fail(c, f"CHANGELOG.md: no '## {v}' entry")
+    if not any("`orgo`" in body and "K8" in body and tuple(map(int, n.split("."))) > (0, 6, 0) for n, body in secs):
+        fail(c, "CHANGELOG.md: no entry above 0.6.0 recording `orgo` (K8)")
     st = text("docs/stories/K8-orgo.md")
     if not re.search(r"Risk: high", st): fail(c, "docs/stories/K8-orgo.md: missing, or its risk is not high")
     for t in ["orgo_valid", "orgo_remote_only", "orgo_read_list", "orgo_hook_asks", "orgo_question", "orgo_hostile_input",
