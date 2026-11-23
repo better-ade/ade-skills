@@ -11,10 +11,15 @@
   `github` and `gmail` until K7) causes no decision. Where a ready `cli` recipe is named, `gh` and `git` pass only as
   one plain command matching an entry's words, listed flags and arguments (`clickup`, `jira` and `linear` are
   unaffected by that rule); `gh api` asks; the `deny` runs (`gh auth token`, `gh auth status -t`, `--show-token`,
-  `git credential fill`) are refused in every mode and folder; a positional that is a path outside the project folder
-  (or starts with `~`) makes a free command ask. `check-recipe.sh`'s folder mode now finds the hook files in an
+  `git credential fill`, `gh auth git-credential`, `gh config get oauth_token`, git's `credential-<helper> get` for
+  eight helpers) are refused in every mode and folder, also when a shell on the line reads them from quoted text
+  (`sh -c '...'`, `eval`, a here-document into `sh`), when a variable holds them, or when a glob or a brace can become
+  the missing word (`gh auth t*`); a mention of one inside other quotes or a here-document asks; names are compared in
+  any case, an unquoted expansion splits words, and a shell command that touches git's or gh's configuration or
+  stored-credentials files counts as naming them; a positional that is a path outside the project folder (or starts with `~`) makes a free
+  command ask. The hook has a 10 s timeout. `check-recipe.sh`'s folder mode now finds the hook files in an
   installed copy's own `hooks/` folder (it refused every ready recipe outside the repository layout). The shipped
-  plugins' own hooks are unchanged. Anything the guard cannot read asks. `tests/guard.sh` checks it with a 285-row command table; `docs/connectors.md`, "The
+  plugins' own hooks are unchanged. Anything the guard cannot read asks. `tests/guard.sh` checks it with a 407-row command table; `docs/connectors.md`, "The
   guard (K6)", says what it does not see.
 
 ## 0.7.0

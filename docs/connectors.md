@@ -370,36 +370,60 @@ the project or an added directory.
 ### Shell commands
 
 The rule, in one paragraph: a command line cannot be parsed safely, so the guard is exact about what it lets through
-and best-effort about noticing. **Noticing** (4b): remove `'`, `"`, `\` and `$` and split on white space and
-`; & | ( ) < > = ` `` ` ``; a piece that is `gh` or `git`, ends in `/gh` or `/git`, starts with `GH_`, `GITHUB_` or
-`GIT_`, or is one of git's dashed programs (`git-<name>`) names that program. On top, a conservative shell lexer counts
-a word that could become one of them: through `$'...'` escapes (decoded), brace expansion, a glob (`g?`, `gi[t]`), a
-`${...}` with an operator, a word built from several parts (`$a$b`, `g$x`, `$x"h"`), a lone variable or substitution
-in command position, or quoted or substituted text that, read again as a command line, names them; a line the lexer
-cannot read names both. A line that names neither gets no decision: `echo ghost`, `cat ./gh-notes.md`, `ls .github`,
+and best-effort about noticing. **Noticing** (4b, as changed in the K6 fix round): remove `'`, `"` and `\` and split on
+every character outside `[A-Za-z0-9_./-]` (so `$`, `{`, `}` and `=` are split points and `gh${IFS}auth` gives `gh`,
+`IFS`, `auth`); each piece is compared in lower case, since a case-insensitive file system runs `GH` and `GIT`. A piece
+names `gh` when it is `gh`, ends in `/gh`, starts with `gh_` or `github_`, or ends in `gh/config.yml` or
+`gh/hosts.yml`; it names `git` when it is `git`, ends in `/git`, starts with `git_`, is `git-<name>`, contains `.git/`,
+or ends in `.git`, `.gitconfig`, `.gitmodules`, `.git-credentials` or `git/credentials` (so a shell command that
+rewrites git's or gh's configuration, or reads git's stored credentials, asks where GitHub is connected; `ls .git` asks
+there too). A word with a glob or a brace that can become one of those files counts as well, when the part that
+matches holds literal characters (`.gi?/config`, `~/.gitconf*`, `~/.config/g?/hosts.yml`; not `ls */*.yml`). On top, a conservative shell lexer counts a word that could
+become one of them: through `$'...'` escapes (decoded), brace expansion, a glob (`g?`, `gi[t]`), a `${...}` with an
+operator, a word built from several parts (`$a$b`, `g$x`, `$x"h"`), each literal run between unquoted expansions
+taken as a word of its own (the shell splits there: `git${IFS}push`), a lone variable or substitution in command
+position, or quoted text, a here-document or a substitution that, read again as a command line, names them; a line
+the lexer cannot read names both. A line that names neither gets no decision: `echo ghost`, `cat ./gh-notes.md`, `ls .github`,
 `cat .gitignore`, `for i in {1..3}; do ...` do not ask; `echo gh` and `which git` do. **Deny** (4c): every `deny` run of
 every recipe, whatever its state and the record, for each program the line names: each element matches some piece, in
-any order; a long flag also matches its `=` form; a one-letter flag matches a cluster or attached form holding its
-letter (`-at`, `-tfoo`). A match is refused in every mode. **Scope** (4d): record unreadable: ask; where no `ready`
+any order (a word in any case); a long flag also matches its `=` form; a one-letter flag matches a cluster or attached
+form holding its letter (`-at`, `-tfoo`). A match among the **words of the line** is refused in every mode. The words
+of the line are the pieces of unquoted top-level words and of substitutions; a flag in front of a quoted value
+(`--show-token="a b"`); the value of a variable assignment, quoted or not (`x='gh auth token'; $x`); and, when the line
+holds a word that reads text again as a command line (`sh`, `bash`, `zsh`, `dash`, `ksh`, `fish`, `csh`, `tcsh`,
+`eval`, `alias`, `trap`, `watch`, `ssh`, `su`), its quoted text and here-documents too (`sh -c 'gh auth token'`,
+`echo 'gh auth token' | sh`, `bash <<< '...'`). A comment and an arithmetic `(( ))` are read on their own, so a quote or
+a `<<` inside one cannot hide the next line, and the substitutions in a here-document with an unquoted delimiter are
+read as words of the line (the shell runs them: `cat <<EOF` with `$(gh auth token)` in its body). One element of a run, at most, may also be what a glob or a brace on
+the line can become, since the shell fills it in from file names (`touch token; gh auth t*`, `gh auth status -?` with
+a file named `-t`); a pattern alone is never a run, so `git add *` only asks. A match found only inside other quotes
+that hold white space, a here-document no shell reads, or a flag's `=` value (`git commit -m "never run gh auth
+token"`, `rg "gh auth token" docs`, `python3 -c '...'`, `vim -c '...'`) asks instead, in every folder (deny under
+bypassPermissions), so a person can approve a mention. **Scope** (4d): record unreadable: ask; where no `ready`
 `cli` recipe the record names has commands for a named program, no decision. **The allow-list** (4e), else ask: no
-newline or carriage return; outside quotes none of `; & | < > ( ) { } [ ] * ? ~ ! $ ` `` ` `` `\`, inside double
+newline or carriage return; outside quotes none of `; & | < > ( ) { } [ ] * ? ~ ! $ ` `` ` `` `\`, and no `=` at the
+start of a word (zsh's `=cmd`), inside double
 quotes none of `$ ` `` ` `` `\ !`, inside single quotes anything; `shlex.split` succeeds; the first word is `gh` or
 `git` and the connected recipe has commands for it; no later word names `gh` or `git`; `cwd`, links resolved, is the
 project folder or inside it; `gh` takes no global option, `git` only `--no-pager` and `-C <dir>`, each once, `<dir>`
 not empty and inside the project folder; the entry whose `words` match the most next words applies; every later word is
 a listed flag (an item ending in `=` takes the next word, not starting with `-`, or for a `--` flag `F=<value>`), `--`
 where `args` is `any`, or a positional its `args` allows (`any`; `none`; `names`: `^[A-Za-z0-9][A-Za-z0-9._-]*$`, not
-`.` or `..`, and no file or folder of that name where git runs). No abbreviation and no cluster passes. **The path rule** (added here from the K5 sign-off; not yet in the contract's text):
+`.` or `..`, and no file or folder of that name where git runs). No abbreviation and no cluster passes, except a
+count `-<n>` on the `log`, `shortlog` and `rev-list` entries (format 1 cannot list a numeric flag). **The path rule** (added here from the K5 sign-off; not yet in the contract's text):
 every positional of a command that would otherwise get no decision, after `--` included, must lie inside the project
 folder: a positional that starts with `~`, or that, joined to the directory the command runs in (the `-C` folder, else
 `cwd`) and resolved with links followed where they exist (a path that does not exist is judged by its text), lies
 outside the project folder, asks. So `git diff /etc/passwd /dev/null` (git's no-index fallback prints a whole outside
 file), `git diff ../../x`, `git blame ~/x`, `git grep pat ../..` and a path through a link that leads outside ask,
 while `git show HEAD:README.md`, `git diff -- src/a.c`, `git log -- <absolute path inside the project>`, revisions and
-branch names are untouched. Flag values (`--file=<path>`) are not paths to this rule.
+branch names are untouched. Of flag values, only those of `-F` and `--file` (commit's message file) go through this
+rule.
 
-`tests/guard.sh` holds the table: 285 command lines with the expected result (265 in `TABLE`: 176 ask, 62 free
-shapes and 27 lines that cannot run them, both no decision; and 20 refused in every mode and in every folder), run against a fixture whose `cli` recipe is the contract's `github` example set to `ready`.
+`tests/guard.sh` holds the table: 407 command lines with the expected result (319 in `TABLE`: 221 ask, 68 free
+shapes and 30 lines that cannot run them, both no decision; 71 refused in every mode and in every folder; and
+17 mentions inside quotes or a here-document that ask in every folder), run against a fixture whose `cli`
+recipe is the shipped `github` recipe set to `ready`.
 Among them: a pipeline, `&&`, `||`, `;`, `&`, a newline, a carriage return, a subshell, a group, `$( )`, backticks,
 `sh -c`, `bash -c`, `zsh -c`, `eval`, `exec`, `command`, `builtin`, `env`, `nice`, `time`, `nohup`, `timeout`, `sudo`,
 `xargs`, `find -exec`, `watch`, a variable holding the name, an absolute, relative or `~` path, quotes and backslashes
@@ -435,9 +459,23 @@ status`), and so does a commit message passed through `$(cat <<'EOF' ...)` (use 
   including a token if someone embedded one in it.
 - `gh ... -R HOST/OWNER/REPO` (and `--repo`) on a free reading shape can send a request to a host named on the command
   line.
-- A token a file holds (`cat ~/.config/gh/hosts.yml` when `gh` keeps it in a plain file), and git's credential helpers
-  run directly (`git credential-osxkeychain get` asks where GitHub is connected and gets no decision elsewhere; the
-  `deny` list holds only `credential fill`).
+- A token a file holds: `cat ~/.config/gh/hosts.yml` (when `gh` keeps it in a plain file), `~/.git-credentials` and
+  `~/.config/git/credentials` (git's `store` helper) ask where GitHub is connected and get no decision elsewhere; a
+  `deny` run is a list of command words and cannot name a file. A credential helper the `deny` list does not name
+  (`git credential-<another> get`) asks where GitHub is connected and gets no decision elsewhere; the list names
+  `osxkeychain`, `store`, `cache`, `manager`, `manager-core`, `libsecret`, `oauth` and `wincred`.
+- A credential-printing command built from a variable set in an earlier call, or printed by a program
+  (`gh auth $x`, `gh auth $(printf ...)`): it asks where GitHub is connected and gets no decision elsewhere. Inside the
+  text of another interpreter (`python3 -c`, `perl -e`, `vim -c`, `osascript -e`) a mention asks in every folder; it
+  is not refused.
+- A file tool (Write, Edit) writing `.git/config`, `~/.gitconfig` or `gh`'s config: a shell hook does not see it;
+  the person's file-write permissions are the fence.
+- `env`, `printenv` and `set` print the environment, a `GH_TOKEN` or `GITHUB_TOKEN` included; they do not name `gh`
+  or `git`, so the guard does not see them.
+- The record is repository content: `.ade/connectors.json` is committed, so a hostile repository can name a ready
+  service and make its reads free in that folder; review a record that comes with a clone.
+- Until `ade connect` ships, write the record by hand: `{"format": 1, "connectors": ["jira"]}` in
+  `<project folder>/.ade/connectors.json`, names sorted and unique, and commit it.
 - Who answers its questions: see "When the owner is not the one answering" above; the guard's `ask` reaches the owner
   only when the owner answers the session's prompts.
 
@@ -454,8 +492,10 @@ status`), and so does a commit message passed through `$(cat <<'EOF' ...)` (use 
   or an alternation; the generator writes one group per prefix, as the contract says.
 - `onFailure`: "To block the action instead, set `"onFailure": "block"`... Requires Claude Code v2.1.295 or later";
   can't start, an exit code other than 0 or 2, a timeout and invalid output all count as failures.
-- Timeout: "Defaults: 600 for `command`". The guard's hooks set none (the contract's hook object has none), so a hung
-  helper would hold a call for up to ten minutes and then block it.
+- Timeout: "`timeout` | no | Seconds before canceling ... Defaults: 600 for `command`". The guard's hooks set
+  `"timeout": 10` (a field the contract's hook object does not have yet), so with `onFailure: "block"` a hung helper
+  blocks the call within ten seconds. The record is opened without following a link and without blocking, so a FIFO
+  cannot hang it; the lexer's brace and bracket scans are bounded.
 - Several hooks: "When an event fires, its matching hooks run in parallel", and "When multiple PreToolUse hooks return
   different decisions, precedence is `deny` > `defer` > `ask` > `allow`." A plugin's ask prompt carries the label
   `[plugin:<name>]`.

@@ -13,7 +13,8 @@ bad = []
 TEST = ["?"]
 def fail(msg): bad.append(f"FAIL: {TEST[0]}: {msg}")
 
-HOOK = {"type": "command", "command": "bash", "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/guard.sh"], "onFailure": "block"}
+HOOK = {"type": "command", "command": "bash", "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/guard.sh"], "timeout": 10,
+        "onFailure": "block"}
 MODES = ["default", "plan", "acceptEdits", "auto", "dontAsk", "bypassPermissions"]
 
 # ------------------------------------------------------------------ running the hook as hooks.json declares it
@@ -82,13 +83,11 @@ def recipe(service, **over):
             "hosts": ["example.com"], "pages": {}, "reaches": "A test fixture."}
     base.update(over); return base
 
-def contract_github():
-    # The ready cli fixture is the contract's own `github` example (section 1, amendment 1), with state ready.
-    c = open(f"{R}/.ade/context/connectors.md").read()
-    m = re.search(r"### Example: `github`.*?```json\n(.*?)```", c, re.S)
-    r = json.loads(m.group(1)); r["state"] = "ready"; r.pop("held", None); return r
+def ready_github():
+    # The ready cli fixture is the shipped `github` recipe (amendment 1's shape, pinned by K5's test), set to ready.
+    r = json.load(open(f"{G}/connectors/github.json")); r["state"] = "ready"; r.pop("held", None); return r
 
-GITHUB = contract_github()
+GITHUB = ready_github()
 MAILBOX = recipe("mailbox", job="mail", sign_in={"kind": "claude-ai", "connector": "Mailbox"},
                  guard={"prefixes": ["mcp__claude_ai_Mailbox__"], "read": ["get_message", "search_threads"]})
 CHATTER = recipe("chatter", job="chat", state="held", held="A test fixture that is held.",
@@ -318,7 +317,7 @@ TABLE = [
     ('g"h" pr merge 1', "ask"), ("g\\h pr merge 1", "ask"), ("'g'it push", "ask"), ("$'gh' pr merge 1", "ask"),
     ("$'\\x67h' pr merge 1", "ask"), ("$'\\147\\150' pr view", "ask"), ("{g,}h pr merge 1", "ask"), ("gi{t,} push", "ask"),
     ("/opt/homebrew/bin/g? pr merge 1", "ask"), ("/usr/bin/gi[t] push", "ask"), ("=gh pr merge 1", "ask"),
-    ("git-receive-pack .", "ask"), ("/usr/libexec/git-core/git-push origin", "ask"), ("git credential-osxkeychain get", "ask"),
+    ("git-receive-pack .", "ask"), ("/usr/libexec/git-core/git-push origin", "ask"),
     # here-documents, here-strings, process substitution
     ("sh <<EOF\ngh pr merge 1\nEOF", "ask"), ("sh <<< 'gh pr merge 1'", "ask"), ("bash <(echo gh pr merge 1)", "ask"),
     # aliases and functions defined on the line, leading assignments, exported variables
@@ -327,7 +326,7 @@ TABLE = [
     ("export GIT_PAGER=cat", "ask"), ("export GH_TOKEN=x", "ask"), ("export GITHUB_TOKEN=x", "ask"),
     # the letters alone: no decision (AC7)
     ("echo ghost", "none"), ("light", "none"), ("cat github.txt", "none"), ("cat ./gh-notes.md", "none"),
-    ("cat .gitignore", "none"), ("ls .git", "none"), ("ls -la .github/workflows", "none"), ("grep -rn digit src", "none"),
+    ("cat .gitignore", "none"), ("ls -la .github/workflows", "none"), ("grep -rn digit src", "none"),
     ("npm test", "none"), ("python3 -m pytest -q", "none"), ("make build", "none"), ('echo "legit" > notes.txt', "none"),
     ("ls src/*.py", "none"), ("for i in {1..3}; do echo $i; done", "none"), ("cat <<'EOF' > a.txt\nhello\nEOF", "none"),
     ("echo $HOME", "none"), ('cd "$HOME/x" && ls', "none"), ("awk '{print $1}' f", "none"),
@@ -336,13 +335,67 @@ TABLE = [
     ("ls -la", "none"), ("cargo build --release", "none"), ("rg -n 'digit' src", "none"),
     # a piece that is exactly gh or git asks, even in echo (rule 4b)
     ("echo gh", "ask"), ("which git", "ask"), ("ls /usr/bin/git", "ask"),
+    # fix round, review of PR #18. 1: names in any case (macOS file systems ignore case)
+    ("GIT push", "ask"), ("Git push", "ask"), ("/usr/bin/GIT push", "ask"), ("/USR/BIN/GIT push", "ask"),
+    ("GH pr merge 1", "ask"), ("./GH pr merge 1", "ask"), ("Gh_HOST=x gh pr view 1", "ask"),
+    # 2: an unquoted expansion splits a word
+    ("git${IFS}push", "ask"), ("git$IFS'push'", "ask"), ('git$IFS"push"', "ask"), ("git${IFS}push${IFS}origin", "ask"),
+    ("x=' '; git${x}push", "ask"), ("git${=IFS}push", "ask"),
+    # 3: shell commands that rewrite git or gh configuration
+    ('sed -i "" s/github.com/evil.example/ .git/config', "ask"), ('echo "[core] fsmonitor = ./x.sh" >> .git/config', "ask"),
+    ("printf '[alias]' >> .git/config", "ask"), ("cp /tmp/c .git/config", "ask"), ("tee -a .git/config < f", "ask"),
+    ("ln -sf /tmp/hooks .git/hooks", "ask"), ("echo x >> ~/.gitconfig", "ask"), ("cat f >> ~/.config/gh/config.yml", "ask"),
+    ("cp x ~/.config/gh/hosts.yml", "ask"), ("echo x > .gitmodules", "ask"), ("ls .git", "ask"), ("cat sub/.GIT/config", "ask"),
+    # 7: commit's file values, zsh's =cmd, the branch upstream flags, -<n> counts
+    ("git commit -F /etc/passwd", "ask"), ("git commit --file=/etc/passwd", "ask"), ("git commit -F ../../x", "ask"),
+    ("git commit -F msg.txt", "free"), ("git log =x", "ask"), ("git log --format='a=b' -n 1", "free"),
+    ("git branch -u origin/main", "ask"), ("git branch --set-upstream-to=origin/main", "ask"),
+    ("git log -5", "free"), ("git log --oneline -20", "free"), ("git rev-list -3 HEAD", "free"), ("git shortlog -3", "free"),
+    ("git show -5", "ask"), ("git log -5x", "ask"),
+    # 8: found only by reading quoted text again as a command line
+    ("sh -c '$x pr merge 1'", "ask"), ("bash -c '$GIT push'", "ask"),
+    # 9: a here-string is not a here-document; git's stored credentials; a glob in a configuration path; a glob alone
+    # is not a deny run (git add * must stay a question, not a refusal)
+    ("cat <<< 'a b'", "none"), ('wc -l <<< "it is fine"', "none"), ("ls */*.yml", "none"), ("ls src/.??*", "none"),
+    ("cat ~/.git-credentials", "ask"), ("cat ~/.config/git/credentials", "ask"), ("echo x >> .gi[t]/config", "ask"), ("echo x >> .g*/config", "ask"),
+    ("echo x >> ~/.gitconf*", "ask"), ("cat ~/.config/g?/hosts.yml", "ask"), ("cat ~/.config/gh/*", "ask"),
+    ("git add *", "ask"), ("git add c* f*", "ask"), ("gh auth status && ls *.md", "ask"), ("gh pr view $n", "ask"),
 ]
 REFUSED = [  # AC6: refused in every mode, in every folder
     "gh auth token", "gh auth token --hostname example.com", "gh auth status --show-token", "gh auth status -t",
     "gh auth status -at", "gh auth status --show-token=true", "gh auth status --hostname x -t", "gh auth -t status",
-    "gh auth status -tfoo", 'gh auth tok"en"', "sh -c 'gh auth token'", "echo $(gh auth token)", "x=$(gh auth token); echo $x",
+    "gh auth status -tfoo", 'gh auth tok"en"', "echo $(gh auth token)", "x=$(gh auth token); echo $x",
     "git credential fill", "echo url=https://example.com | git credential fill", "/usr/bin/git credential fill",
-    "gh auth $'\\x74oken'", "GH_HOST=x gh auth token", 'echo "gh auth token"', 'git commit -m "credential fill"',
+    "gh auth $'\\x74oken'", "GH_HOST=x gh auth token",
+    # fix round, review of PR #18. 1: any case
+    "GH auth token", "Gh auth token", "GH auth status --show-token", "GIT credential fill", "echo $(GH auth token)",
+    # 2: an unquoted expansion splits words
+    "gh${IFS}auth${IFS}token", "gh${IFS}auth token", "gh$IFS'auth'$IFS'token'", "gh${=IFS}auth${=IFS}token",
+    # 4: credential helpers and a token kept in gh's config
+    "gh auth git-credential get", "git credential-osxkeychain get", "git credential-store get", "git credential-cache get",
+    "git credential-manager get", "git-credential-osxkeychain get", "gh config get oauth_token", "gh config get -h github.com oauth_token",
+    "git credential-manager-core get", "git credential-libsecret get", "git credential-oauth get", "git credential-wincred get",
+    # 6: quoted text that a shell on the line reads again as a command line is not a mention
+    "sh -c 'gh auth token'", "bash -c 'g${x}h auth token'", 'eval "gh auth token"', "echo 'gh auth token' | sh",
+    "sh <<EOF\ngh auth token\nEOF", "bash <<< 'gh auth token'", "alias t='gh auth token'; t", "trap 'gh auth token' EXIT",
+    "watch 'gh auth token'", "ssh host 'gh auth token'",
+    "x='gh auth token'; $x", "a='auth token'; gh $a", "export T='gh auth token'; $T", 'bash -c "sh -c \'gh auth token\'"',
+    # 9: a glob or a brace that can become the missing element (a file named token, or -t); a flag before a quoted value
+    "gh auth t*", "gh auth tok?n", "gh auth [t]oken", "gh auth tok{en,}", "gh auth *", "gh auth status -?", "gh auth status *",
+    "gh auth status -[a-z]", "gh auth status {-t,}",
+    "git credential f*", "git credential-osx* get", 'gh auth status --show-token="a b"',
+    # 9: text the shell does not read as a here-document or as a quote must not hide the next line; an unquoted
+    # here-document still runs its substitutions
+    "cat <<< x\ngh auth token", "((1<<2))\ngh auth token", "echo hi # <<X\ngh auth token", "echo # it's\ngh auth token\n# it's",
+    "cat <<EOF\n$(gh auth token)\nEOF", "cat <<EOF\n`gh auth token`\nEOF", "cat <<-EOF\n\t$(git credential fill)\n\tEOF",
+]
+SOFT = [  # 6: a deny run found only inside quotes, a here-document or a flag's value: ask (deny in bypass), everywhere
+    'echo "gh auth token"', 'git commit -m "credential fill"', 'git commit -m "docs: never run gh auth token"',
+    'git log --grep="credential fill"', 'rg "gh auth token" docs', "cat <<'EOF' > n.md\nnever run gh auth token\nEOF",
+    "cat <<EOF > n.md\nnever run gh auth token\nEOF", "vim -c '!gh auth token'", "ruby -e 'system %q{gh auth token}'",
+    "git log --grep=credential -- fill", "bash -c \"echo 'never run gh auth token'\"",
+    'git commit -m "fix bash completion for gh auth token"', "python3 -c 'print(\"gh auth token\")'",
+    "echo 'auth token' | xargs gh", "cat <<'EOF'\n$(gh auth token)\nEOF", "cat <<\\EOF\n$(gh auth token)\nEOF", "find . -name '*.sh' | xargs grep -l 'gh auth token'",
 ]
 
 def cmd_of(c): return c.replace(X, P)
@@ -362,7 +415,7 @@ def table_rows(want_set):
 def clean_line(s): return re.sub(r"[\x00-\x1f\x7f-\x9f]", " ", s)
 
 def guard_gh_git():
-    if len(TABLE) + len(REFUSED) < 60: fail(f"the table has {len(TABLE) + len(REFUSED)} rows, want at least 60")
+    if len(TABLE) + len(REFUSED) + len(SOFT) < 60: fail(f"the table has {len(TABLE) + len(REFUSED) + len(SOFT)} rows, want at least 60")
     if not checker_takes_fixtures(): return
     table_rows({"free", "ask"})
     d, _ = call(FX, "Monitor", P, tool_input={"command": "gh pr merge 1"})
@@ -393,6 +446,13 @@ def guard_gh_refused():
             if d != "deny" or "credential" not in why: fail(f"{c!r} in {mode}: {d}, want deny")
         for folder in (Q, project("onlyjira", ["jira"])):
             if bash(FX, c, folder)[0] != "deny": fail(f"{c!r} in a folder that does not name github: want deny")
+    for c in SOFT:
+        for mode in MODES:
+            d, why = bash(FX, c, P, mode=mode)
+            want = "deny" if mode == "bypassPermissions" else "ask"
+            if d != want: fail(f"{c!r} in {mode}: {d}, want {want} (a quoted mention, approvable)")
+        for folder in (Q, project("onlyjira", ["jira"])):
+            if bash(FX, c, folder)[0] != "ask": fail(f"{c!r} in a folder that does not name github: want ask")
 
 def guard_other_commands():
     if not checker_takes_fixtures(): return
@@ -447,6 +507,20 @@ def guard_fail_closed():
             if got != "ask": fail(f"{what}: {tool} {ti}: {got}, want ask")
     d = broken("fcmiss", lambda d: os.remove(f"{d}/connectors/jira.json"))
     if call(d, jira, P)[0] != "ask": fail("a missing recipe: a tool under its declared prefix wants ask")
+    # 5: nothing hangs: a FIFO record, pathological lines (each within a limit, the hook's own process)
+    fifo = project("fiforec", None); os.mkfifo(f"{fifo}/.ade/connectors.json")
+    for label, run in [("a FIFO record", lambda: call(FM, jira, fifo)),
+                       ("'{' x 20000", lambda: bash(FX, "{" * 20000, P)), ("'$(' x 5000", lambda: bash(FX, "$(" * 5000, P)),
+                       ("'${' x 5000", lambda: bash(FX, "${" * 5000, P)), ("'`' x 20001", lambda: bash(FX, "`" * 20001, P)),
+                       ("'[' x 20000", lambda: bash(FX, "[" * 20000, P)), ("quotes x 20000", lambda: bash(FX, "'a'\"b\"" * 10000, P)),
+                       ("200 KiB of words", lambda: bash(FX, "echo " + "word " * 40000, P)),
+                       ("20000 globs", lambda: bash(FX, "gh auth " + "*a?b*c?[d]*e{f,g}* " * 20000, P)),
+                       ("3000 different globs", lambda: bash(FX, "gh auth " + " ".join("?*" * 30 + str(i) for i in range(3000)), P)),
+                       ("a comment per line", lambda: bash(FX, "# it's <<X ((\n" * 5000, P)),
+                       ("one long glob", lambda: bash(FX, "git credential " + "*a" * 30000, P))]:
+        t0 = time.perf_counter(); d, _ = run(); took = time.perf_counter() - t0
+        if took > 5: fail(f"{label}: the hook took {took:.1f} s (limit 5 s)")
+        if label == "a FIFO record" and d != "ask": fail(f"{label}: {d}, want ask")
     nopy = f"{T}/nopy"; os.makedirs(nopy, exist_ok=True)
     bash_path = shutil.which("bash")
     if not os.path.exists(f"{nopy}/bash"): os.symlink(bash_path, f"{nopy}/bash")

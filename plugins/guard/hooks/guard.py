@@ -13,6 +13,8 @@ MAX_RECORD = 64 * 1024
 NAME = re.compile(r"[a-z][a-z0-9-]{0,31}")
 PROGRAMS = ("gh", "git")
 REMOTE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")        # rule 4e.8, "names"
+COUNT_ENTRIES = {("git", "log"), ("git", "shortlog"), ("git", "rev-list")}   # also take -<n> (K6 fix round)
+FILE_FLAGS = {"-F", "--file"}                                  # their values go through the path rule
 
 
 class Unreadable(Exception):
@@ -128,7 +130,7 @@ def record(folder):
     if not os.path.lexists(path):
         return set()
     try:
-        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0))
         try:
             st = os.fstat(fd)
             if not stat.S_ISREG(st.st_mode) or st.st_size > MAX_RECORD:
@@ -153,14 +155,28 @@ def record(folder):
 
 
 # ---------------------------------------------------------------- noticing gh and git in a command line
-SEP = re.compile(r"[\s;&|()<>=`]+")
-DASHED_GIT = re.compile(r"(?:.*/)?git-[A-Za-z0-9][A-Za-z0-9._-]*")
+SEP = re.compile(r"[^A-Za-z0-9_./-]+")       # rule 4b pieces: split on any character outside [A-Za-z0-9_./-]
+DASHED_GIT = re.compile(r"(?:.*/)?git-[a-z0-9][a-z0-9._-]*")
+MAX_FRAGS = 64                                # a word built from more parts than this counts as naming both
+
+
+def pieces_of(text):
+    # Rule 4b: drop ' " \ and split; $ { } = and the rest are split points, so ${IFS} leaves gh, IFS, auth, ...
+    # git's dashed programs also give their name (git-credential-osxkeychain: credential-osxkeychain), for 4c.
+    out = [p for p in SEP.split(re.sub(r"['\"\\\\]", "", text)) if p]
+    return out + [m.group(1) for m in (re.fullmatch(r"(?:.*/)?git-(.+)", p, re.I) for p in out) if m]
 
 
 def piece_names(p):
-    # Rule 4b, and git's dashed programs (git-<name>) on top.
-    gh = p == "gh" or p.endswith("/gh") or p.startswith("GH_") or p.startswith("GITHUB_")
-    git = p == "git" or p.endswith("/git") or p.startswith("GIT_") or bool(DASHED_GIT.fullmatch(p))
+    """Rule 4b, compared in lower case (a case-insensitive file system runs GH and GIT): gh, .../gh, GH_*, GITHUB_*,
+    gh's config files; git, .../git, GIT_*, git-<name>, and git's configuration and stored-credentials files (K6 fix
+    round)."""
+    q = p.lower()
+    gh = (q == "gh" or q.endswith("/gh") or q.startswith("gh_") or q.startswith("github_")
+          or q.endswith("gh/config.yml") or q.endswith("gh/hosts.yml"))
+    git = (q == "git" or q.endswith("/git") or q.startswith("git_") or bool(DASHED_GIT.fullmatch(q))
+           or ".git/" in q or q.endswith((".git", ".gitconfig", ".gitmodules", ".git-credentials"))
+           or q == "git/credentials" or q.endswith("/git/credentials"))
     return gh, git
 
 
@@ -201,7 +217,8 @@ def ansi_c(body):
 
 
 def match_close(s, i, open_c, close_c):
-    # s[i] is just after an opening open_c; returns the index of its closing close_c (quotes skipped roughly).
+    # s[i] is just after an opening open_c; returns the index of its closing close_c (quotes skipped roughly). One
+    # pass; an unbalanced line raises at once.
     depth, q = 1, None
     while i < len(s):
         c = s[i]
@@ -227,96 +244,200 @@ def match_close(s, i, open_c, close_c):
 PLAIN_PARAM = re.compile(r"#?(?:[A-Za-z_][A-Za-z0-9_]*|[0-9]+|[@*#?$!-])")
 KEEP_COMMAND = {"then", "do", "else", "elif", "if", "while", "until", "!", "{", "time", "exec", "command", "builtin",
                 "nohup", "nice", "sudo", "env", "xargs", "timeout", "eval", "watch", "doas"}
+E_MARK = ("E",)
+WORD_END = re.compile(r"[\s;&|()<>]")
+SLASH = ("/",)
+# A word on the line that reads quoted text again as a command line: with one of these, quoted text and
+# here-documents count as words of the line for rule 4c (sh -c '...', eval "...", echo '...' | sh, an alias).
+REREAD = {"sh", "bash", "zsh", "dash", "ksh", "fish", "csh", "tcsh", "eval", "alias", "trap", "watch", "ssh", "su"}
+ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=.*", re.S)
+GIT_FILES = (".git", ".gitconfig", ".gitmodules", ".git-credentials")
+GH_FILES = ("config.yml", "hosts.yml")
+
+
+def literal(f):
+    # A fragment that is one literal character (re.escape of it), not a glob or a brace: that character, else None.
+    if isinstance(f, str) and f != "." and (len(f) == 1 or (len(f) == 2 and f[0] == "\\")):
+        return f[-1]
+    return None
+
+
+def can_be(frags, target, anycase=True):
+    """Can a word's fragments (globs and braces included) become target? One pass over the fragments with the set of
+    reachable positions, so no pattern makes it slow. A word holding an expansion or a slash cannot."""
+    t = target.lower() if anycase else target
+    n, pos = len(t), {0}
+    for f in frags:
+        ch = literal(f)
+        if ch is not None:
+            ch = ch.lower() if anycase else ch
+            pos = {p + 1 for p in pos if p < n and t[p] == ch}
+        elif f == ".*":
+            pos = set(range(min(pos), n + 1))
+        elif f == ".":
+            pos = {p + 1 for p in pos if p < n}
+        elif isinstance(f, str):                       # a brace list or a number range
+            try:
+                pos = {q for p in pos for q in range(p, n + 1) if re.fullmatch(f, t[p:q], re.S | (re.I if anycase else 0))}
+            except re.error:
+                return True
+        else:
+            return False
+        if not pos:
+            return False
+    return n in pos
+
+
+def config_path(frags):
+    """A word with a glob or a brace that can be one of git's or gh's configuration files (.gi?/config, ~/.gitconf*,
+    ~/.config/g?/hosts.yml). A part must hold literal characters, so `ls *` and `ls .*` name nothing. (gh, git)"""
+    comps, cur = [], []
+    for f in frags:
+        if f == SLASH:
+            comps.append(cur); cur = []
+        else:
+            cur.append(f)
+    comps.append(cur)
+    lits = [sum(1 for f in c if literal(f) is not None) for c in comps]
+    git = any(c and literal(c[0]) == "." and k >= 2 and any(can_be(c, t) for t in GIT_FILES)
+              for c, k in zip(comps, lits))
+    gh = any(lits[i - 1] >= 1 and lits[i - 1] + lits[i] >= 2 and can_be(comps[i - 1], "gh")
+             and any(can_be(comps[i], t) for t in GH_FILES) for i in range(1, len(comps)))
+    return gh, git
 
 
 class Notice:
+    """What a line names, and its pieces for rule 4c: `hard`, from unquoted top-level words and substitutions (a deny
+    run there is refused); `soft`, every piece, quoted text, here-documents and flag values included (a deny run found
+    only there asks, so a person can approve a mention). `patterns`: the hard words that hold a glob or a brace, which
+    the shell can turn into a word the line does not show (a file named token, or -t)."""
     def __init__(self):
         self.gh = self.git = False
-        self.pieces = set()
+        self.hard, self.soft = set(), set()
+        self.patterns = {}                         # hard words holding a glob or a brace (4c)
 
     def both(self):
         self.gh = self.git = True
 
 
-def notice(cmd, depth=0, n=None):
-    """Whether a command line can name gh or git (rule 4b, then a lexer on top), and its pieces for rule 4c."""
+def notice(cmd, depth=0, n=None, hard=True):
     n = n or Notice()
     if depth > 4:
         n.both(); return n
-    # The contract's rule: drop ' " \ $, split on white space and ; & | ( ) < > = `.
-    pieces = [p for p in SEP.split(re.sub(r"['\"\\$]", "", cmd)) if p]
-    for p in pieces:
+    raw = pieces_of(cmd)
+    for p in raw:
         a, b = piece_names(p); n.gh |= a; n.git |= b
-    n.pieces.update(pieces)
-    # A conservative shell lexer on top: quotes, $'...' escapes, brace expansion, globs, ${...} operators, names
-    # built from several parts, and a variable in command position.
+    n.soft.update(raw)
     try:
-        words, quoted = lex(cmd)
+        words, quoted, subs = lex(cmd)
     except LexError:
-        n.both(); return n
-    lits = []
-    for frags, lone, cmdpos, opaque, literal in words:
-        if opaque:
+        n.both()
+        if hard:
+            n.hard.update(raw)
+        return n
+    for w in words:
+        if w["opaque"]:
             n.both()
-        if lone:
-            if cmdpos:
+        if w["lone"]:
+            if w["cmdpos"]:
                 n.both()
             continue
-        lits.append(literal)
         for prog in PROGRAMS:
-            if could_be(frags, prog):
+            if could_be(w["frags"], prog):
                 setattr(n, prog, True)
-    n.pieces.update(p for lit in lits for p in SEP.split(lit) if p)
+        if w["pattern"]:
+            a, b = config_path(w["frags"]); n.gh |= a; n.git |= b
+        if not hard:
+            continue
+        text = w["text"]
+        if text.startswith("-") and "=" in text:
+            n.hard.update(pieces_of(text.split("=", 1)[0]))   # the flag is a word of the line; its value is not
+        elif not w["spaced_quote"] or (ASSIGNMENT.fullmatch(text) and w["literal_start"]):
+            n.hard.update(pieces_of(text))             # a variable's value can be split into words later (x='..'; $x)
+        if w["pattern"] and not w["spaced_quote"]:
+            n.patterns[tuple(w["frags"])] = None
+    n.soft.update(n.hard)
+    reread = hard and any(not w["spaced_quote"] and os.path.basename(w["text"]).lower() in REREAD for w in words)
     for q in quoted:
-        notice(q, depth + 1, n)
+        notice(q, depth + 1, n, hard=reread)
+    for q in subs:
+        notice(q, depth + 1, n, hard=hard)
     return n
 
 
 def could_be(frags, prog):
-    # frags: regex fragments of one word; ("/",) marks a literal slash. Can the word be prog, or a path ending in it?
-    rx = "".join("/" if f == ("/",) else f for f in frags)
+    """frags: one word's regex fragments; E_MARK is an expansion, SLASH a literal slash. Can the word, or a literal
+    run between unquoted expansions (the shell splits there), be prog or a path ending in it? Any case."""
+    if len(frags) > MAX_FRAGS:
+        return True
+    runs, cur = [], []
+    for f in frags:
+        if f == E_MARK:
+            runs.append(cur); cur = []
+        else:
+            cur.append(f)
+    runs.append(cur)
+    cands = [frags] + (runs if len(runs) > 1 else [])
     try:
-        if re.fullmatch(rx, prog, re.S):
-            return True
-        if ("/",) in frags:
-            last = len(frags) - 1 - frags[::-1].index(("/",))
-            tail = frags[last + 1:]
-            if tail and not all(f == ".*" for f in tail) and re.fullmatch("".join(tail), prog, re.S):
+        for c in cands:
+            rx = "".join(".*" if f == E_MARK else "/" if f == SLASH else f for f in c)
+            if c and re.fullmatch(rx, prog, re.S | re.I):
                 return True
+            if SLASH in c:
+                last = len(c) - 1 - c[::-1].index(SLASH)
+                tail = c[last + 1:]
+                if tail and not all(f in (".*", E_MARK) for f in tail):
+                    trx = "".join(".*" if f == E_MARK else f for f in tail)
+                    if re.fullmatch(trx, prog, re.S | re.I):
+                        return True
     except re.error:
         return True
     return False
 
 
 def lex(s):
-    """Splits a line into shell words. Each word: (regex fragments, lone expansion?, in command position?,
-    opaque?, literal text). Also returns the quoted texts, which a later shell could run."""
-    words, quoted = [], []
-    frags, lit, kinds, opaque = [], [], [], False
+    """Splits a line into shell words, each a dict: frags (regex fragments), lone (a single expansion), cmdpos,
+    opaque, text (its literal text, an expansion as a space), spaced_quote (a quoted part holds white space) and
+    pattern (it holds a glob or a brace).
+    Also returns the quoted texts and here-document bodies (read again as soft), and the substitutions (read again
+    as top-level)."""
+    words, quoted, subs, heredocs = [], [], [], []
+    st = {"frags": [], "text": [], "kinds": [], "opaque": False, "spaced": False, "pattern": False}
     cmdpos = True
     i, n = 0, len(s)
 
-    def L(text):
+    def reset():
+        st.update(frags=[], text=[], kinds=[], opaque=False, spaced=False, pattern=False)
+
+    def L(text, quoted_part=False):
+        if quoted_part and re.search(r"\s", text):
+            st["spaced"] = True
         for ch in text:
-            frags.append(("/",) if ch == "/" else re.escape(ch)); lit.append(ch); kinds.append("L")
+            st["frags"].append(SLASH if ch == "/" else re.escape(ch)); st["text"].append(ch); st["kinds"].append("L")
 
     def E():
-        frags.append(".*"); kinds.append("E")
+        st["frags"].append(E_MARK); st["text"].append(" "); st["kinds"].append("E")
+
+    def G(frag, text):
+        # a glob or a brace: a fragment that is not literal text
+        st["frags"].append(frag); st["text"].append(text); st["kinds"].append("L"); st["pattern"] = True
 
     def end(sep):
-        nonlocal frags, lit, kinds, opaque, cmdpos
-        if kinds:
-            literal = "".join(lit)
-            lone = all(k == "E" for k in kinds) and len(kinds) == 1
-            words.append((frags, lone, cmdpos, opaque, literal))
-            assign = bool(re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*=.*", literal, re.S)) and kinds[0] == "L"
-            cmdpos = (cmdpos and assign) or literal in KEEP_COMMAND
-        frags, lit, kinds, opaque = [], [], [], False
+        nonlocal cmdpos
+        k = st["kinds"]
+        if k:
+            text = "".join(st["text"])
+            lone = len(k) == 1 and k[0] == "E"
+            words.append({"frags": st["frags"], "lone": lone, "cmdpos": cmdpos, "opaque": st["opaque"],
+                          "text": text, "spaced_quote": st["spaced"], "pattern": st["pattern"],
+                          "literal_start": k[0] == "L"})
+            assign = bool(ASSIGNMENT.fullmatch(text)) and k[0] == "L"
+            cmdpos = (cmdpos and assign) or text in KEEP_COMMAND
+        reset()
         if sep is not None and sep in ";&|(\n\r":
             cmdpos = True
 
     def dollar(i, in_dq):
-        nonlocal opaque
         nxt = s[i + 1] if i + 1 < n else ""
         if nxt == "'" and not in_dq:
             j = i + 2
@@ -324,24 +445,88 @@ def lex(s):
                 j += 2 if s[j] == "\\" else 1
             if j >= n:
                 raise LexError("unterminated $'")
-            text = ansi_c(s[i + 2:j]); L(text); quoted.append(text); return j + 1
+            text = ansi_c(s[i + 2:j]); L(text, True); quoted.append(text); return j + 1
         if nxt == "{":
             j = match_close(s, i + 2, "{", "}")
             if not PLAIN_PARAM.fullmatch(s[i + 2:j]):
-                opaque = True
+                st["opaque"] = True
             E(); return j + 1
         if nxt == "(":
             j = match_close(s, i + 2, "(", ")")
-            quoted.append(s[i + 2:j]); E(); return j + 1
+            subs.append(s[i + 2:j]); E(); return j + 1
         m = re.match(r"[A-Za-z_][A-Za-z0-9_]*|[0-9@*#?$!-]", s[i + 1:])
         if m:
             E(); return i + 1 + len(m.group())
         L("$"); return i + 1
 
+    def heredoc_start(i):
+        # s[i:i+2] is an unquoted << (not <<<): note its delimiter; the body starts after the next newline.
+        j = i + 2
+        strip = j < n and s[j] == "-"
+        j += 1 if strip else 0
+        while j < n and s[j] in " \t":
+            j += 1
+        k = j
+        while k < n and s[k] not in " \t\n\r;&|()<>":
+            k += 1
+        delim = re.sub(r"['\"\\\\]", "", s[j:k])
+        heredocs.append((delim, strip, delim == s[j:k]))  # an unquoted delimiter: the body's substitutions run
+        return k
+
+    def body_subs(b):
+        # The substitutions of an unquoted here-document's body: the shell runs them, so they are read as top-level.
+        i = 0
+        while i < len(b):
+            if b[i] == "\\":
+                i += 2
+            elif b.startswith("$(", i):
+                j = match_close(b, i + 2, "(", ")")
+                subs.append(b[i + 2:j]); i = j + 1
+            elif b[i] == "`":
+                k = b.find("`", i + 1)
+                if k < 0:
+                    raise LexError("unterminated `")
+                subs.append(b[i + 1:k]); i = k + 1
+            else:
+                i += 1
+
+    def heredoc_bodies(i):
+        # s[i] is just after a newline: consume each pending body up to its delimiter line.
+        while heredocs:
+            delim, strip, expands = heredocs.pop(0)
+            body = []
+            while i < n:
+                e = s.find("\n", i)
+                line = s[i:] if e < 0 else s[i:e]
+                i = n if e < 0 else e + 1
+                if (line.lstrip("\t") if strip else line) == delim:
+                    break
+                body.append(line)
+            quoted.append("\n".join(body))
+            if expands:
+                body_subs("\n".join(body))
+        return i
+
     while i < n:
         c = s[i]
-        if c in " \t\n\r;&|()<>":
+        if c == "#" and not st["kinds"]:
+            # A comment runs to the end of the line. It is read on its own, as words of the line, so that a quote
+            # or a << inside it cannot hide the lines after it.
+            e = s.find("\n", i)
+            e = n if e < 0 else e
+            subs.append(s[i + 1:e]); i = e
+        elif s.startswith("((", i) and not st["kinds"] and s.find("))", i + 2) >= 0:
+            # Arithmetic: << is a shift there, not a here-document. Its text is read on its own.
+            j = s.find("))", i + 2)
+            end(c); subs.append(s[i + 2:j]); i = j + 2
+        elif s.startswith("<<<", i):
+            end(c); i += 3                               # a here-string: the next word is its text, not a delimiter
+        elif s.startswith("<<", i):
+            end(c); i = heredoc_start(i)
+        elif c in " \t\n\r;&|()<>":
             end(c); i += 1
+            if c == "\n" and heredocs:
+                i = heredoc_bodies(i)
         elif c == "\\":
             if i + 1 < n and s[i + 1] == "\n":
                 i += 2
@@ -353,9 +538,9 @@ def lex(s):
             j = s.find("'", i + 1)
             if j < 0:
                 raise LexError("unterminated '")
-            L(s[i + 1:j]); quoted.append(s[i + 1:j]); i = j + 1
+            L(s[i + 1:j], True); quoted.append(s[i + 1:j]); i = j + 1
         elif c == '"':
-            j, start = i + 1, i + 1
+            j, start, lit = i + 1, i + 1, []
             while True:
                 if j >= n:
                     raise LexError('unterminated "')
@@ -363,16 +548,19 @@ def lex(s):
                 if d == '"':
                     break
                 if d == "\\" and j + 1 < n:
-                    L(s[j + 1] if s[j + 1] in '$`"\\\n' else "\\" + s[j + 1]); j += 2
+                    ch = s[j + 1] if s[j + 1] in '$`"\\\n' else "\\" + s[j + 1]
+                    L(ch, True); lit.append(ch); j += 2
                 elif d == "$":
                     j = dollar(j, True)
                 elif d == "`":
                     k = s.find("`", j + 1)
                     if k < 0:
                         raise LexError("unterminated `")
-                    quoted.append(s[j + 1:k]); E(); j = k + 1
+                    subs.append(s[j + 1:k]); E(); j = k + 1
                 else:
-                    L(d); j += 1
+                    L(d, True); lit.append(d); j += 1
+            if re.search(r"\s", "".join(lit)):
+                st["spaced"] = True
             quoted.append(s[start:j]); i = j + 1
         elif c == "$":
             i = dollar(i, False)
@@ -380,37 +568,42 @@ def lex(s):
             k = s.find("`", i + 1)
             if k < 0:
                 raise LexError("unterminated `")
-            quoted.append(s[i + 1:k]); E(); i = k + 1
+            subs.append(s[i + 1:k]); E(); i = k + 1
         elif c in "*?":
-            frags.append(".*" if c == "*" else "."); lit.append(c); kinds.append("L"); i += 1
+            G(".*" if c == "*" else ".", c); i += 1
         elif c == "[":
-            k = s.find("]", i + 1)
+            k = s.find("]", i + 1, i + 258)
             if k < 0 or re.search(r"[\s;&|()<>]", s[i + 1:k]):
                 L("["); i += 1
             else:
-                frags.append("."); lit.append(s[i:k + 1]); kinds.append("L"); i = k + 1
+                G(".", s[i:k + 1]); i = k + 1
         elif c == "{":
+            limit = min(n, i + 128)                      # bounded, so a long run of { stays linear
+            m = WORD_END.search(s, i + 1, limit)
+            stop = m.start() if m else limit
             k, depth = i + 1, 1
-            while k < n and depth and s[k] not in " \t\n\r;&|()<>":
-                depth += {"{": 1, "}": -1}.get(s[k], 0); k += 1
+            if s.find("}", i + 1, stop) >= 0:
+                while k < stop and depth:
+                    depth += {"{": 1, "}": -1}.get(s[k], 0); k += 1
             body = s[i + 1:k - 1] if depth == 0 else None
             if body is None:
+                if stop == limit and limit < n and not m:
+                    st["opaque"] = True
                 L("{"); i += 1
             elif re.fullmatch(r"-?\d+\.\.-?\d+(\.\.-?\d+)?", body):
-                frags.append(r"-?\d+"); lit.append(s[i:k]); kinds.append("L"); i = k
+                G(r"-?\d+", s[i:k]); i = k
             elif re.fullmatch(r".\.\..(\.\.-?\d+)?", body):
-                frags.append("."); lit.append(s[i:k]); kinds.append("L"); i = k
+                G(".", s[i:k]); i = k
             elif "," in body and not re.search(r"[{}$`'\"\\*?\[]", body):
-                frags.append("(?:" + "|".join(re.escape(a) for a in body.split(",")) + ")")
-                lit.append(s[i:k]); kinds.append("L"); i = k
+                G("(?:" + "|".join(re.escape(a) for a in body.split(",")) + ")", s[i:k]); i = k
             elif "," in body or ".." in body:
-                frags.append(".*"); lit.append(s[i:k]); kinds.append("L"); i = k
+                G(".*", s[i:k]); i = k
             else:
                 L("{"); i += 1
         else:
             L(c); i += 1
     end(None)
-    return words, quoted
+    return words, quoted, subs
 
 
 # ---------------------------------------------------------------- rule 4c: deny, everywhere
@@ -419,12 +612,32 @@ def element_hit(e, pieces):
         return e in pieces                     # --x=<v> was split at = into --x
     if re.fullmatch(r"-[A-Za-z0-9]", e):        # a one-letter flag: alone, in a cluster, or with an attached value
         return any(p == e or (re.fullmatch(r"-[A-Za-z0-9]+", p) and e[1] in p[1:]) for p in pieces)
-    return e in pieces
+    return e in {p.lower() for p in pieces}     # a word, in any case (GIT CREDENTIAL can run on macOS)
 
 
-def deny_hit(run, pieces):
-    # Each element of the run matches some piece, in any order and position.
-    return all(element_hit(e, pieces) for e in run)
+def pattern_hit(e, n):
+    # Can a glob or brace word of the line become element e? (touch token; gh auth t*   or a file named -t)
+    for frags in n.patterns:
+        if len(frags) > MAX_FRAGS:
+            return True
+        if re.fullmatch(r"-[A-Za-z0-9]", e):        # a one-letter flag: a pattern word that can be - and letters
+            lits = [literal(f) for f in frags]
+            if lits[0] in ("-", None) and E_MARK not in frags and SLASH not in frags \
+                    and all(c is None or c.isalnum() for c in lits[1:]):
+                return True
+        elif can_be(frags, e, anycase=not e.startswith("-")):
+            return True
+    return False
+
+
+def deny_hit(run, pieces, n=None):
+    """Each element of the run matches some piece, in any order and position. With n (the line's Notice): one element,
+    at most, may instead be what a glob or brace word of the line can become; a pattern alone is never a run (git
+    add * stays a question)."""
+    missing = [e for e in run if not element_hit(e, pieces)]
+    if not missing:
+        return True
+    return n is not None and len(run) > 1 and len(missing) == 1 and pattern_hit(missing[0], n)
 
 
 # ---------------------------------------------------------------- rule 4e: the allow-list
@@ -433,8 +646,9 @@ def chars_ok(s):
     ; & | < > ( ) { } [ ] * ? ~ ! $ ` \\ ; inside double quotes none of $ ` \\ ! ; inside single quotes, anything."""
     if "\n" in s or "\r" in s:
         return False
-    q = None
+    q, prev = None, " "
     for c in s:
+        start, prev = prev in " \t" and q is None, c
         if q == "'":
             if c == "'":
                 q = None
@@ -445,7 +659,7 @@ def chars_ok(s):
                 q = None
         elif c in "'\"":
             q = c
-        elif c in ";&|<>(){}[]*?~!$`\\":
+        elif c in ";&|<>(){}[]*?~!$`\\" or (c == "=" and start):   # and zsh's =cmd at a word's start
             return False
     return q is None
 
@@ -472,7 +686,7 @@ def outside(word, rundir, project):
     return not inside(os.path.realpath(os.path.join(rundir, word)), project)
 
 
-def accepts(entry, words, rundir, project):
+def accepts(entry, words, rundir, project, prog=""):
     """Rule 4e.8 and the path rule: every word after the entry's words, left to right. None if accepted, else the
     reason to ask."""
     i = 0
@@ -480,13 +694,19 @@ def accepts(entry, words, rundir, project):
         w = words[i]
         if w in entry.exact:
             i += 1; continue
+        if (prog, " ".join(entry.words)) in COUNT_ENTRIES and re.fullmatch(r"-[0-9]+", w):
+            i += 1; continue
         if w in entry.valued:
             if i + 1 >= len(words) or words[i + 1].startswith("-"):
                 return f"{w} needs a value"
+            if w in FILE_FLAGS and outside(words[i + 1], rundir, project):
+                return f"{words[i + 1]} is a path outside the project folder"
             i += 2; continue
         if w.startswith("--") and "=" in w:
             f, v = w.split("=", 1)
             if f in entry.valued and v and not v.startswith("-"):
+                if f in FILE_FLAGS and outside(v, rundir, project):
+                    return f"{v} is a path outside the project folder"
                 i += 1; continue
             return f"{w.split('=', 1)[0]} is not a flag this entry lists with a value"
         if w == "--":
@@ -523,7 +743,7 @@ def allowed(cmd, commands, project, cwd):
         return "it is not one plain gh or git command"
     prog, rest = w[0], w[1:]
     for x in rest:
-        if any(any(piece_names(p)) for p in SEP.split(re.sub(r"['\"\\$]", "", x)) if p):
+        if any(any(piece_names(p)) for p in pieces_of(x)):
             return "a later word names gh or git"
     if not inside(cwd, project):
         return "its working directory is outside the project folder"
@@ -550,7 +770,7 @@ def allowed(cmd, commands, project, cwd):
             best = e
     if best is None:
         return f"it is not on the free list for {prog}"
-    why = accepts(best, rest[len(best.words):], rundir, project)
+    why = accepts(best, rest[len(best.words):], rundir, project, prog)
     return None if why is None else f"{why} ({prog} {' '.join(best.words)})"
 
 
@@ -591,13 +811,20 @@ def shell(cmd, recipes, data, mode):
     named = [p for p in PROGRAMS if getattr(n, p)]
     if not named:
         return print("PASS")
+    soft = None
     for r in recipes:                                # 4c: every recipe, any state, any record, every mode
         for prog in named:
             for run in r["guard"].get("commands", {}).get(prog, {}).get("deny", []):
-                if deny_hit(run, n.pieces):
+                if deny_hit(run, n.hard, n):
                     return decide("deny", f"This command can print a credential ({clean(' '.join(run))}, "
                                           f"{r['service']} recipe); the guard refuses it in every mode: {clean(cmd)}",
                                   "default")
+                if soft is None and deny_hit(run, n.soft):
+                    soft = run
+    if soft is not None:                             # a mention in quotes, a here-document or a flag's value
+        return decide("ask", f"This command mentions a credential-printing command ({clean(' '.join(soft))}) inside "
+                             f"quotes, a here-document or a flag's value: {clean(cmd)}; approve only if it does not run it.",
+                      mode)
     project = project_folder()
     names = record(project)                          # 4d: unreadable raises, so it asks
     commands = {}

@@ -44,7 +44,9 @@
         "deny": [
           ["auth", "token"],
           ["auth", "status", "--show-token"],
-          ["auth", "status", "-t"]
+          ["auth", "status", "-t"],
+          ["auth", "git-credential"],
+          ["config", "get", "oauth_token"]
         ]
       },
       "git": {
@@ -84,7 +86,7 @@
           { "words": ["mv"], "flags": ["-f", "-k"], "args": "any" },
           { "words": ["rm"], "flags": ["-r", "-f", "--cached"], "args": "any" },
           { "words": ["clean"], "flags": ["-n", "--dry-run", "-f", "--force", "-d", "-fd", "-df", "-nd", "-dn"], "args": "any" },
-          { "words": ["branch"], "flags": ["-a", "--all", "-r", "--remotes", "-v", "-vv", "--verbose", "--show-current", "--list", "-d", "--delete", "-D", "-m", "--move", "-M", "-c", "--copy", "-u=", "--set-upstream-to=", "--unset-upstream"], "args": "any" },
+          { "words": ["branch"], "flags": ["-a", "--all", "-r", "--remotes", "-v", "-vv", "--verbose", "--show-current", "--list", "-d", "--delete", "-D", "-m", "--move", "-M", "-c", "--copy", "--unset-upstream"], "args": "any" },
           { "words": ["tag"], "flags": ["-l", "--list", "-a", "--annotate", "-m=", "--message=", "-d", "--delete"], "args": "any" },
           { "words": ["stash"], "flags": ["-u", "--include-untracked", "-m=", "--message="], "args": "none" },
           { "words": ["stash", "push"], "flags": ["-u", "--include-untracked", "--staged", "-m=", "--message="], "args": "any" },
@@ -103,7 +105,15 @@
           { "words": ["pull"], "flags": ["--ff-only", "--rebase", "--no-rebase", "--prune", "--tags"], "args": "names" }
         ],
         "deny": [
-          ["credential", "fill"]
+          ["credential", "fill"],
+          ["credential-osxkeychain", "get"],
+          ["credential-store", "get"],
+          ["credential-cache", "get"],
+          ["credential-manager", "get"],
+          ["credential-manager-core", "get"],
+          ["credential-libsecret", "get"],
+          ["credential-oauth", "get"],
+          ["credential-wincred", "get"]
         ]
       }
     }

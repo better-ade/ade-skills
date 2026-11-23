@@ -60,7 +60,7 @@ PLUGIN_PREFIX = re.compile(rf"mcp__plugin_({NAME})_([A-Za-z0-9-]{{1,40}})__")
 TOOL = re.compile(r"[A-Za-z][A-Za-z0-9_-]{0,127}")
 WORD = re.compile(r"[a-z][a-z0-9-]*")                # a free entry's words; a deny word
 FLAG = re.compile(r"(-[A-Za-z0-9]+|--[a-z0-9][a-z0-9-]*)(=[A-Za-z0-9._,-]*)?")
-DENY_ELEMENT = re.compile(r"[a-z][a-z0-9-]*|-[A-Za-z0-9]|--[a-z0-9][a-z0-9-]*")
+DENY_ELEMENT = re.compile(r"[a-z][a-z0-9_-]*|-[A-Za-z0-9]|--[a-z0-9][a-z0-9-]*")   # _ for oauth_token (K6)
 HOST = re.compile(r"(?=.{1,253}$)[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+")
 URL = re.compile(r"https://([a-z0-9.-]+)(/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*)?")
 HOOK_FILES = ["plugins/guard/hooks/hooks.json", "plugins/guard/hooks/guard.sh"]

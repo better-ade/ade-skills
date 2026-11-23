@@ -10,6 +10,7 @@
             "args": [
               "${CLAUDE_PLUGIN_ROOT}/hooks/guard.sh"
             ],
+            "timeout": 10,
             "onFailure": "block"
           }
         ]
@@ -23,6 +24,7 @@
             "args": [
               "${CLAUDE_PLUGIN_ROOT}/hooks/guard.sh"
             ],
+            "timeout": 10,
             "onFailure": "block"
           }
         ]
@@ -36,6 +38,7 @@
             "args": [
               "${CLAUDE_PLUGIN_ROOT}/hooks/guard.sh"
             ],
+            "timeout": 10,
             "onFailure": "block"
           }
         ]
@@ -49,6 +52,7 @@
             "args": [
               "${CLAUDE_PLUGIN_ROOT}/hooks/guard.sh"
             ],
+            "timeout": 10,
             "onFailure": "block"
           }
         ]
