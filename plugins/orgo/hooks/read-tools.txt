@@ -1,0 +1,15 @@
+# Orgo MCP server tools that read and change nothing (story K8). Each name is in the Tools table of Orgo's MCP guide
+# (docs.orgo.ai/guides/mcp) and is a GET operation in Orgo's published API specification
+# (docs.orgo.ai/api-reference/openapi.json), both read 2026-11-23. One name per line, exact; a tool not listed here
+# asks first. Left off on purpose although they are GETs: orgo_download_file (hands out a link to a file),
+# orgo_get_vnc_password and orgo_get_computer_ssh (hand out a way in), orgo_get_residential_proxy and
+# orgo_get_computer_suspension (each can do more than read).
+orgo_get_computer
+orgo_get_computer_operation
+orgo_get_resize_limits
+orgo_get_screen
+orgo_get_screenshot
+orgo_get_workspace
+orgo_list_files
+orgo_list_screens
+orgo_list_workspaces
