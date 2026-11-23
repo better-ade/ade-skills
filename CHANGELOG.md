@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.7.0
+## 0.8.0
 
 - Connector recipes (K5): `guard` plugin 0.1.0 carries one recipe per service in `plugins/guard/connectors/`, format 1
   of `.ade/context/connectors.md` (amendment 1), for `ade connect` and the guard (its hook is story K6; K5 and K6 are
@@ -10,6 +10,18 @@
   (tier 3), `outlook` and `teams` (tier 4). `plugins/guard/scripts/check-recipe.sh` checks one recipe or the folder;
   `tests/recipes.sh` checks them all. Each release attaches every recipe as `connector-<service>.json`, hashed in
   `release.json`.
+
+## 0.7.0
+
+- `orgo` plugin 0.1.0 (K8): Orgo's own hosted MCP server for cloud computers (`https://www.orgo.ai/mcp`, http, signed
+  in through `/mcp`; no API key, no local server), built as `clickup`, `jira` and `linear` are: a skill and a
+  `PreToolUse` hook that asks before any tool of that server not on the plugin's read list (nine reads: workspaces,
+  a computer, its screens, a screenshot, the file list) and refuses it in `bypassPermissions` mode. Orgo's two
+  additions: the question says that Orgo bills a computer by the hour while it runs when a tool creates or starts
+  one, and for the bash and Python tools it ends with the command's first line, cleaned of control characters and cut
+  to 200 characters. A second skill, `install-ade`, installs ADE on an Orgo computer through that server with
+  ade-cli's public installer (the tagged release) and leaves `ade setup` and every sign-in to the person.
+  `docs/connectors.md` records the server and what is not confirmed; `tests/orgo.sh` checks it.
 
 ## 0.6.0
 

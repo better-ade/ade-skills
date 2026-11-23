@@ -131,6 +131,54 @@ In those setups, a change goes ahead only on the owner's word in the conversatio
   known `get_`, `list_` and `search_` tools; compare it with what `/mcp` shows after signing in. A missing name only
   asks; the owner check compares them.
 
+## `orgo`
+
+Recorded by story K8; facts read from Orgo's own pages on 2026-11-23. Orgo gives cloud computers (Linux desktops, and
+others) that agents can drive. Orgo: sign in through `/mcp`, choose the workspace; agents can read freely, and ask
+before creating computers, running commands or controlling a desktop.
+
+- Server: `https://www.orgo.ai/mcp`
+- Documented at: https://docs.orgo.ai/guides/mcp (the address, sign-in, the tool table, revoking); the tool names and
+  their HTTP methods in Orgo's published API specification, https://docs.orgo.ai/api-reference/openapi.json (version
+  2.0.0 on the day); the bash tool's limits on https://docs.orgo.ai/api-reference/computers/bash.
+- Confirmed on the day: from the page only. The guide names this address for remote HTTP MCP clients and says "No API
+  key is needed for this connection" (OAuth authorization-code flow with PKCE, one-hour access tokens, rotating
+  refresh tokens). No request was made to the address itself, no sign-in was made and no tool was called.
+- Sign in: run `/mcp`, pick `plugin:orgo:orgo`, choose Authenticate; Orgo's sign-in and consent page opens in the
+  browser; choose the workspace to authorize and approve. Orgo also offers an API key (in a header, or with a local
+  server); this plugin uses neither.
+- Sign out: in `/mcp`, pick the server and choose Clear authentication, or run `claude mcp logout plugin:orgo:orgo`.
+- Revoke at the vendor: Orgo's Settings, Security, Connected AI apps (https://www.orgo.ai/settings/security#connected-apps):
+  click Disconnect next to the app; its next tool call fails with `401`.
+- Reaches: the one workspace the owner chooses at sign-in: reading the workspace, creating and managing its
+  computers, the screenshot, mouse, keyboard, bash and Python tools on them (commands run as root), screens, and
+  listing, exporting, downloading, deleting and uploading files. Orgo's guide says a sign-in is not offered templates,
+  clients, account, chat or support tools, creating or deleting workspaces, suspending or resuming, a computer's
+  password, or putting vault secrets on a computer.
+- Costs: Orgo bills a computer by the hour while it runs (from the account's credit, or against the plan's room), so
+  the hook's question says so for `orgo_create_computer`, `orgo_clone_computer`, `orgo_fork_computer`,
+  `orgo_start_computer`, `orgo_restart_computer` and `orgo_resume_computer`. Nothing here stops a computer by itself.
+- Read list: 9 tools, each in the guide's tool table and a `GET` in the specification: `orgo_list_workspaces`,
+  `orgo_get_workspace`, `orgo_get_computer`, `orgo_get_computer_operation`, `orgo_get_resize_limits`,
+  `orgo_list_screens`, `orgo_get_screen`, `orgo_get_screenshot`, `orgo_list_files`. On purpose not on it, though each
+  is a `GET`: `orgo_download_file` (a signed link to a file), `orgo_get_vnc_password` and `orgo_get_computer_ssh` (a
+  way in), `orgo_get_residential_proxy` and `orgo_get_computer_suspension` (each can do more than read). Every other
+  tool asks, including `orgo_wait`, the workflow tools and any name Orgo adds later.
+- The question for `orgo_execute_bash` and `orgo_execute_python` ends with the command (`command` or `code`): its
+  first line that is not blank, without control or invisible characters, cut to 200 characters, with the number of
+  lines when there are more. It shows the start of a command, not all of it; the skill has the agent show the whole
+  command in the conversation first.
+- Not confirmed: which tools a sign-in is offered, by name. The guide describes the sign-in's reviewed list in words
+  ("a sign-in can see fewer tools than the spec defines") and its table "shows the spec when this page was written";
+  the names here come from that table and the specification, not from a signed-in server. Also not confirmed: that the
+  tools arrive named `mcp__plugin_orgo_orgo__orgo_…` (the guide gives the `orgo_` names), and the argument names
+  `command` and `code` over MCP (they are the specification's body fields; the guide says arguments are flattened).
+  A name that differs only asks; a command the hook cannot read is said to be unreadable. The owner check compares.
+- A screenshot is on the read list, so it needs no extra question: it shows whatever is on that desktop.
+- The `install-ade` skill installs ADE on an Orgo computer through these tools: it reads the workspace, checks the
+  system and runs ade-cli's public installer (the tagged release) with `orgo_execute_bash`, each call asked by the
+  hook, then leaves `ade setup` and every sign-in to the person at the desktop.
+
 ## GitHub
 
 GitHub is not shipped yet: its hosted server's sign-in does not work through `/mcp` without a credential set up
@@ -255,6 +303,10 @@ Needs the owner's accounts, so it cannot be automated. For each of `clickup`, `j
 4. Ask for one change and see the hook's question, labelled `[plugin:<plugin>]` and naming the tool; decline it.
 5. For `linear`: compare the tool list `/mcp` shows with `plugins/linear/hooks/read-tools.txt`, and report any read
    tool missing from it and any name on it that is not a read (its 19 names are not confirmed on the day).
+7. For `orgo` (story K8), the same steps with `plugin:orgo:orgo`, choosing a test workspace at sign-in. Compare the tool
+   list `/mcp` shows with `plugins/orgo/hooks/read-tools.txt`. Ask for a computer to be created and see the question
+   say that Orgo bills it by the hour while it runs; ask for a command and see its first line in the question; decline
+   both. Revoke in Orgo's Settings, Security, Connected AI apps.
 6. Sign out with Clear authentication, and revoke at the vendor as above.
 
 ## Recipes (K5)
