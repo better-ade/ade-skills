@@ -163,9 +163,13 @@ for f in glob.glob(f"{R}/plugins/guard/connectors/*.json"):
     try: r = json.load(open(f)); recipes[r["service"]] = r
     except (ValueError, KeyError): pass
 by_plugin = {r["sign_in"].get("plugin"): r for r in recipes.values() if r.get("sign_in", {}).get("kind") == "plugin"}
+NO_RECIPE = {"orgo"}
+for p in NO_RECIPE & set(by_plugin): bad.append(f"plugins/{p} now has a recipe: take it off NO_RECIPE")
 for rt in glob.glob(f"{R}/plugins/*/hooks/read-tools.txt"):
     p = rt.split(os.sep)[-3]
-    if p not in by_plugin: bad.append(f"plugins/{p} has a read list but no plugin recipe names it")
+    # orgo (K8) is not a connector of format 1 (its job is none of tickets, code, mail, chat), so it has no recipe
+    # and the guard makes no claim on it; its own hook asks. Any other plugin with a read list needs a recipe.
+    if p not in by_plugin and p not in NO_RECIPE: bad.append(f"plugins/{p} has a read list but no plugin recipe names it")
 for p, r in by_plugin.items():
     read = r["guard"]["read"]; pre = r["guard"]["prefixes"]
     if f"mcp__plugin_{p}_{p}__" not in pre: bad.append(f"{r['service']}: prefixes {pre} lack mcp__plugin_{p}_{p}__")

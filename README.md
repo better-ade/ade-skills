@@ -14,6 +14,7 @@ request. Roles live in [ade-method](https://github.com/better-ade/ade-method) an
 | `clickup` | ClickUp's own hosted MCP server; the owner signs in through `/mcp`; a hook asks before any tool not on its read list |
 | `jira` | Atlassian's own hosted MCP server (Rovo MCP, v2) for Jira; the owner signs in through `/mcp`; a hook asks before any tool not on its read list |
 | `linear` | Linear's own hosted MCP server; the owner signs in through `/mcp`; a hook asks before any tool not on its read list |
+| `orgo` | Orgo's own hosted MCP server for cloud computers; the owner signs in through `/mcp` and chooses the workspace; a hook asks before any tool not on its read list, says when a computer will be billed by the hour, and shows a command before it runs. Also: install ADE on an Orgo computer: ask your main agent |
 | `guard` | The connector recipes (`plugins/guard/connectors/<service>.json`) that `ade connect` and the guard read; and the guard's hook over their tools and `gh` and `git` (story K6; docs/connectors.md, "The guard (K6)") |
 
 ## Install
@@ -28,11 +29,15 @@ request. Roles live in [ade-method](https://github.com/better-ade/ade-method) an
 /plugin install clickup@ade-skills
 /plugin install jira@ade-skills
 /plugin install linear@ade-skills
+/plugin install orgo@ade-skills
 ```
 
-The connector plugins (`clickup`, `jira`, `linear`) hold no credential: each owner signs in themselves through
+The connector plugins (`clickup`, `jira`, `linear`, `orgo`) hold no credential: each owner signs in themselves through
 `/mcp`. [docs/connectors.md](docs/connectors.md) gives each server's address, sign-in, sign-out, revocation and reach.
 
+Orgo: sign in through `/mcp`, choose the workspace; agents can read freely, and ask before creating computers, running
+commands or controlling a desktop. Orgo bills a computer by the hour while it runs. To revoke access, open Orgo's
+Settings, Security, Connected AI apps, and disconnect it.
 Each connector, shipped or held, has a recipe in `plugins/guard/connectors/`: how it is signed in to, its tier and its
 read tools (`clickup`, `jira`, `linear`, `github`, `gmail`, `slack`, `discord`, `outlook`, `teams`; see
 [docs/connectors.md](docs/connectors.md), "Recipes (K5)").
@@ -56,4 +61,6 @@ A project can offer them to teammates in its committed `.claude/settings.json` (
 `bash tests/run.sh`: manifests and names, a version in one place, `## Ask first` in every skill, pinned MCP packages,
 `claude plugin validate` on every plugin the marketplace lists (fails if `claude` is missing), the document-plugin
 conventions in [docs/conventions.md](docs/conventions.md), the connector checks (`tests/connectors.sh`: vendor servers
-only, no secret, the ask-first hook run on sample tool names), the connector recipes (`tests/recipes.sh`), and a gitleaks scan.
+only, no secret, the ask-first hook run on sample tool names), the Orgo connector's checks (`tests/orgo.sh`: the remote
+server only, its read list, the hook's question run on made-up and hostile tool input), the connector recipes
+(`tests/recipes.sh`), the guard's hook (`tests/guard.sh`), and a gitleaks scan.
