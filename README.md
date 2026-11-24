@@ -4,6 +4,12 @@ Predefined skills and MCP servers for ADE developers, as a Claude Code plugin ma
 request. Roles live in [ade-method](https://github.com/better-ade/ade-method) and
 [ade-agent-registry](https://github.com/better-ade/ade-agent-registry); this repo is what those roles can *do*.
 
+Where it fits: [ade](https://github.com/better-ade/ade-cli) is the command, [ade-brain](https://github.com/better-ade/ade-brain)
+the hub, [ade-method](https://github.com/better-ade/ade-method) the rules, ade-skills (this repo) the skills,
+[ade-secrets](https://github.com/better-ade/ade-secrets) the keys, [ade-terminal](https://github.com/better-ade/ade-terminal)
+the desktop app, and [ade-computer](https://github.com/better-ade/ade-computer) an isolated desktop to run it in. More
+at [ade.ardata.tech](https://ade.ardata.tech/).
+
 | Plugin | What it gives an agent |
 |---|---|
 | `git` | Branch, commit and PR conventions: commit as the user, no AI attribution, verify before pushing, ask before push or merge |
@@ -15,7 +21,7 @@ request. Roles live in [ade-method](https://github.com/better-ade/ade-method) an
 | `jira` | Atlassian's own hosted MCP server (Rovo MCP, v2) for Jira; the owner signs in through `/mcp`; a hook asks before any tool not on its read list |
 | `linear` | Linear's own hosted MCP server; the owner signs in through `/mcp`; a hook asks before any tool not on its read list |
 | `orgo` | Orgo's own hosted MCP server for cloud computers; the owner signs in through `/mcp` and chooses the workspace; a hook asks before any tool not on its read list, says when a computer will be billed by the hour, and shows a command before it runs. Also: install ADE on an Orgo computer: ask your main agent |
-| `guard` | The connector recipes (`plugins/guard/connectors/<service>.json`) that `ade connect` and the guard read; and the guard's hook over their tools and `gh` and `git` (story K6; docs/connectors.md, "The guard (K6)") |
+| `guard` | The connector recipes (`plugins/guard/connectors/<service>.json`) that the guard reads, and that `ade connect` is to read (ade-cli story A16, not built yet); and the guard's hook over their tools and `gh` and `git` (story K6; docs/connectors.md, "The guard (K6)") |
 
 ## Install
 
@@ -30,7 +36,12 @@ request. Roles live in [ade-method](https://github.com/better-ade/ade-method) an
 /plugin install jira@ade-skills
 /plugin install linear@ade-skills
 /plugin install orgo@ade-skills
+/plugin install guard@ade-skills
 ```
+
+Or, in a project, `ade skills add <plugin>` ([ade-cli](https://github.com/better-ade/ade-cli)) adds the marketplace
+once and installs the plugin at project scope. ade 0.2.8 checks the name against this repo at its pin, v0.1.0 (`git`
+and `browser`); for the others: `ADE_SKILLS_REF=v0.9.0 ade skills add notes`.
 
 The connector plugins (`clickup`, `jira`, `linear`, `orgo`) hold no credential: each owner signs in themselves through
 `/mcp`. [docs/connectors.md](docs/connectors.md) gives each server's address, sign-in, sign-out, revocation and reach.
