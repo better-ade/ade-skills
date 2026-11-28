@@ -40,7 +40,7 @@ CONNECTOR = r"[A-Za-z0-9_]{1,40}"                    # sign_in.connector, as in 
 TOP = {"format", "service", "title", "job", "tier", "state", "held", "sign_in", "questions", "guard", "hosts",
        "pages", "reaches"}
 TOP_REQUIRED = TOP - {"held"}
-JOBS = {"tickets", "code", "mail", "chat"}
+JOBS = {"tickets", "code", "mail", "chat", "files"}
 STATES = {"ready", "held"}
 KINDS = {"plugin", "cli", "claude-ai"}
 SIGN_IN = {"kind", "plugin", "cli", "connector", "admin"}

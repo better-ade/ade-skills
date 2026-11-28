@@ -521,7 +521,7 @@ drive_recipe() {
 import json, os, sys
 f, read, change = sys.argv[1], sys.argv[2].split(), sys.argv[3].split(); bad = []
 r = json.load(open(f))
-want = {"format": 1, "service": "google-drive", "tier": 2, "state": "ready"}
+want = {"format": 1, "service": "google-drive", "job": "files", "tier": 2, "state": "ready"}
 for k, v in want.items():
     if r.get(k) != v: bad.append(f"{k} is {r.get(k)!r}, want {v!r}")
 s = r.get("sign_in", {})

@@ -88,7 +88,7 @@ checkout. A recipe is data: no field is run, and no field holds a secret, a clie
 | `format` | `1` |
 | `service` | `^[a-z][a-z0-9-]{0,31}$`, the file name without `.json` |
 | `title` | the vendor's product name, at most 40 characters |
-| `job` | `tickets`, `code`, `mail` or `chat` |
+| `job` | `tickets`, `code`, `mail`, `chat` or `files` (K9) |
 | `tier` | `0` to `4` (section 2) |
 | `state` | `ready` or `held` |
 | `held` | when `state` is `held`: one line, why, in words a person can read (at most 200 characters); absent otherwise |

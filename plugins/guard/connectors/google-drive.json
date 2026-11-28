@@ -2,7 +2,7 @@
   "format": 1,
   "service": "google-drive",
   "title": "Google Drive",
-  "job": "mail",
+  "job": "files",
   "tier": 2,
   "state": "ready",
   "sign_in": {

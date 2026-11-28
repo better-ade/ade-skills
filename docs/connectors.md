@@ -371,8 +371,8 @@ A held recipe never makes the guard act: no matcher, no question, no refusal for
   connectors asks first too, as the guard does not cover their tools. Not confirmed: the connector's host (so the recipe names none, and the doctor
   cannot tell a hand-added Google Drive server from it), its vendor pages, and that each tool does only what its name
   says; the owner check (search and read with no question, a create and a share each asked) needs the owner's own
-  sign-in. The recipe's `job` is `mail`: format 1 has no job for files, and the closest of the four was chosen rather
-  than change the contract and ade-cli in this story.
+  sign-in. The recipe's `job` is `files`, added to format 1 for it (ade-cli
+  accepts it from the release that pins this one).
 - `slack`: tier 1, held: the owner decides whether Slack's published client id may sit in the plugin's `.mcp.json`.
 - `discord`: tier 3, held: story K3's question, and the local proxy for a person's own app is not built.
 - `outlook`: tier 4, held: a tenant administrator and an Entra app per tenant; Microsoft marks the server legacy.
