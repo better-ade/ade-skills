@@ -16,6 +16,20 @@
         ]
       },
       {
+        "matcher": "mcp__claude_ai_Google_Drive__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/guard.sh"
+            ],
+            "timeout": 10,
+            "onFailure": "block"
+          }
+        ]
+      },
+      {
         "matcher": "mcp__plugin_clickup_clickup__.*",
         "hooks": [
           {

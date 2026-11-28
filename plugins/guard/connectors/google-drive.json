@@ -1,0 +1,39 @@
+{
+  "format": 1,
+  "service": "google-drive",
+  "title": "Google Drive",
+  "job": "files",
+  "tier": 2,
+  "state": "ready",
+  "sign_in": {
+    "kind": "claude-ai",
+    "connector": "Google_Drive",
+    "plugin": "google-drive"
+  },
+  "questions": [
+    {
+      "id": "added",
+      "ask": "Have you added the Google Drive connector to your Claude account and signed in to it there?",
+      "to": "gate"
+    }
+  ],
+  "guard": {
+    "prefixes": [
+      "mcp__claude_ai_Google_Drive__"
+    ],
+    "read": [
+      "search_files",
+      "read_file_content",
+      "download_file_content",
+      "get_file_metadata",
+      "get_file_permissions",
+      "list_recent_files",
+      "list_shared_drives",
+      "get_shared_drive_metadata",
+      "list_file_revisions"
+    ]
+  },
+  "hosts": [],
+  "pages": {},
+  "reaches": "The Google Drive of the account signed in to the connector: files, shared drives, who can see them; creating, updating, copying, sharing, trashing and requesting access ask each time."
+}
