@@ -6,7 +6,7 @@
 R="${1:-$(cd "$(dirname "$0")/.." && pwd)}"; rc=0
 fail() { echo "FAIL: $*"; rc=1; }
 C="$R/plugins/guard/connectors"; CHECK="$R/plugins/guard/scripts/check-recipe.sh"
-SERVICES="clickup discord github gmail jira linear outlook slack teams"
+SERVICES="clickup discord github gmail google-drive jira linear outlook slack teams"
 T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
 
 # fixture <dir> [hook]: a copy of the repo layout the checker reads (the recipes, the three plugins' read lists, the
@@ -45,13 +45,13 @@ if not ok: print(f"FAIL: {name}: {label}: want exit 1 and one printable-ASCII li
 PY
 }
 
-# AC1: exactly the nine recipes, each a regular file passing every single-file rule; the folder passes every rule
+# AC1: exactly the ten recipes, each a regular file passing every single-file rule; the folder passes every rule
 # "Across files". The one rule that depends on story K6 is checked exactly as the contract states it: without
 # plugins/guard/hooks/hooks.json or guard.sh, the folder is refused for its ready recipes, and for nothing else.
 recipes_valid() {
   local s f out have F="$T/valid"
   have="$(cd "$C" 2>/dev/null && ls | sort | tr '\n' ' ')"
-  [ "$have" = "$(for s in $SERVICES; do printf '%s.json ' "$s"; done)" ] || fail "recipes_valid: $C holds '$have', want the nine recipes and nothing else"
+  [ "$have" = "$(for s in $SERVICES; do printf '%s.json ' "$s"; done)" ] || fail "recipes_valid: $C holds '$have', want the ten recipes and nothing else"
   [ -f "$CHECK" ] || { fail "recipes_valid: no checker at plugins/guard/scripts/check-recipe.sh"; return; }
   [ -d "$C" ] && [ ! -L "$C" ] || fail "recipes_valid: plugins/guard/connectors is not a plain folder"
   for s in $SERVICES; do
@@ -132,6 +132,7 @@ C = sys.argv[1]; bad = []
 WANT = {"clickup": (0, "ready", "plugin", None), "jira": (0, "ready", "plugin", None), "linear": (0, "ready", "plugin", None),
         "github": (2, "held", "cli", "Not available until the guard's hook and the GitHub skill ship in ade-skills."),
         "gmail": (2, "held", "claude-ai", "Not available until the guard's hook and the Gmail skill ship in ade-skills."),
+        "google-drive": (2, "ready", "claude-ai", None),
         "slack": (1, "held", "plugin", ["client id"]), "discord": (3, "held", "plugin", ["K3"]),
         "outlook": (4, "held", "plugin", ["administrator", "legacy"]), "teams": (4, "held", "plugin", ["administrator", "legacy"])}
 for s, (tier, state, kind, why) in WANT.items():
@@ -271,6 +272,7 @@ ALLOWED = {"clickup": ({"mcp.clickup.com"}, {"developer.clickup.com", "app.click
            "gmail": ({"gmailmcp.googleapis.com"}, {"developers.google.com", "myaccount.google.com"}),
            "slack": ({"mcp.slack.com"}, {"docs.slack.dev"}),
            "discord": (set(), set()),
+           "google-drive": (set(), set()),
            "outlook": ({"agent365.svc.cloud.microsoft"}, {"learn.microsoft.com"}),
            "teams": ({"agent365.svc.cloud.microsoft"}, {"learn.microsoft.com"})}
 def own(h, allowed): return h in allowed
@@ -285,7 +287,8 @@ for s, (hosts, pages) in ALLOWED.items():
     for k, u in r.get("pages", {}).items():
         p = urlparse(u)
         if p.scheme != "https" or not own(p.hostname or "", pages): bad.append(f"{s}: pages.{k} {u} is not https on {sorted(pages)}")
-    if r.get("sign_in", {}).get("kind") != "cli" and s != "discord" and not r.get("hosts"):
+    # google-drive (K9): the claude.ai connector's host was not confirmed, so the recipe names none (docs/connectors.md).
+    if r.get("sign_in", {}).get("kind") != "cli" and s not in ("discord", "google-drive") and not r.get("hosts"):
         bad.append(f"{s}: names no host for the doctor check")
 for b in bad: print("FAIL: recipes_hosts: " + b)
 sys.exit(1 if bad else 0)
@@ -422,7 +425,7 @@ g = load("gmail")
 read = g.get("guard", {}).get("read", [])
 if sorted(read) != sorted(GMAIL_READ): bad.append(f"gmail: guard.read is {read}, want the reviewed {GMAIL_READ}")
 if set(read) & set(GMAIL_OTHER): bad.append(f"gmail: guard.read holds tools that change or fetch something: {sorted(set(read) & set(GMAIL_OTHER))}")
-for s in ["gmail"] + [x for x in ["clickup", "jira", "linear", "github", "slack", "discord", "outlook", "teams"]]:
+for s in ["gmail", "google-drive"] + [x for x in ["clickup", "jira", "linear", "github", "slack", "discord", "outlook", "teams"]]:
     r = load(s)
     if r.get("sign_in", {}).get("kind") == "claude-ai" and r["guard"].get("prefixes") != [f"mcp__claude_ai_{r['sign_in'].get('connector')}__"]:
         bad.append(f"{s}: a claude-ai recipe's prefixes are {r['guard'].get('prefixes')}, want only its own connector's")

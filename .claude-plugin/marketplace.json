@@ -12,6 +12,7 @@
     { "name": "jira", "source": "./plugins/jira", "description": "Jira through Atlassian's own hosted MCP server (Rovo MCP, v2); reads need no extra question; every change through this server asks, or is refused when prompts are switched off." },
     { "name": "linear", "source": "./plugins/linear", "description": "Linear through Linear's own hosted MCP server; reads need no extra question; every change through this server asks, or is refused when prompts are switched off." },
     { "name": "orgo", "source": "./plugins/orgo", "description": "Orgo cloud computers through Orgo's own hosted MCP server; reads need no extra question; everything else through this server (creating or starting a computer, running a command, controlling a desktop) asks, or is refused when prompts are switched off." },
+    { "name": "google-drive", "source": "./plugins/google-drive", "description": "Google Drive through the claude.ai connector you already have: search and read files; with the guard on, creating, updating, copying, sharing, trashing and requesting access ask each time." },
     { "name": "guard", "source": "./plugins/guard", "description": "The connector recipes that ade connect and the guard read, and the guard's hook: reads of a connected service are free, changes ask, gh and git pass only from the recipe's free list, the listed credential-printing commands are refused." }
   ]
 }

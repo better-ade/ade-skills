@@ -21,6 +21,7 @@ at [ade.ardata.tech](https://ade.ardata.tech/).
 | `jira` | Atlassian's own hosted MCP server (Rovo MCP, v2) for Jira; the owner signs in through `/mcp`; a hook asks before any tool not on its read list |
 | `linear` | Linear's own hosted MCP server; the owner signs in through `/mcp`; a hook asks before any tool not on its read list |
 | `orgo` | Orgo's own hosted MCP server for cloud computers; the owner signs in through `/mcp` and chooses the workspace; a hook asks before any tool not on its read list, says when a computer will be billed by the hour, and shows a command before it runs. Also: install ADE on an Orgo computer: ask your main agent |
+| `google-drive` | The claude.ai Google Drive connector you already have, no server of its own: search and read files; with the guard on, creating, updating, copying, sharing, trashing and requesting access ask each time |
 | `guard` | The connector recipes (`plugins/guard/connectors/<service>.json`) that the guard reads, and that `ade connect` is to read (ade-cli story A16, not built yet); and the guard's hook over their tools and `gh` and `git` (story K6; docs/connectors.md, "The guard (K6)") |
 
 ## Install
@@ -36,12 +37,13 @@ at [ade.ardata.tech](https://ade.ardata.tech/).
 /plugin install jira@ade-skills
 /plugin install linear@ade-skills
 /plugin install orgo@ade-skills
+/plugin install google-drive@ade-skills
 /plugin install guard@ade-skills
 ```
 
 Or, in a project, `ade skills add <plugin>` ([ade-cli](https://github.com/better-ade/ade-cli)) adds the marketplace
 once and installs the plugin at project scope. ade 0.2.8 checks the name against this repo at its pin, v0.1.0 (`git`
-and `browser`); for the others: `ADE_SKILLS_REF=v0.9.0 ade skills add notes`.
+and `browser`); for the others: `ADE_SKILLS_REF=v0.10.0 ade skills add notes`.
 
 The connector plugins (`clickup`, `jira`, `linear`, `orgo`) hold no credential: each owner signs in themselves through
 `/mcp`. [docs/connectors.md](docs/connectors.md) gives each server's address, sign-in, sign-out, revocation and reach.
@@ -50,7 +52,7 @@ Orgo: sign in through `/mcp`, choose the workspace; agents can read freely, and 
 commands or controlling a desktop. Orgo bills a computer by the hour while it runs. To revoke access, open Orgo's
 Settings, Security, Connected AI apps, and disconnect it.
 Each connector, shipped or held, has a recipe in `plugins/guard/connectors/`: how it is signed in to, its tier and its
-read tools (`clickup`, `jira`, `linear`, `github`, `gmail`, `slack`, `discord`, `outlook`, `teams`; see
+read tools (`clickup`, `jira`, `linear`, `github`, `gmail`, `google-drive`, `slack`, `discord`, `outlook`, `teams`; see
 [docs/connectors.md](docs/connectors.md), "Recipes (K5)").
 
 A project can offer them to teammates in its committed `.claude/settings.json` (`extraKnownMarketplaces`,

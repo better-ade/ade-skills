@@ -1,0 +1,1 @@
+{ "name": "google-drive", "description": "Google Drive through the claude.ai connector you already have: search and read files; with the guard on, every change (create, update, copy, share, trash, request access) asks.", "version": "0.1.0" }

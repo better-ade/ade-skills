@@ -568,8 +568,35 @@ def guard_docs():
     w = re.search(r"^## When the owner is not the one answering\n(.*?)(?=^## |\Z)", d, re.S | re.M)
     if not w or "guard" not in w.group(1): fail("'When the owner is not the one answering' does not cover the guard")
 
+# ------------------------------------------------------------------ story K9, AC5: Google Drive through the guard
+DRIVE = "mcp__claude_ai_Google_Drive__"
+DRIVE_READ = ["search_files", "read_file_content", "download_file_content", "get_file_metadata", "get_file_permissions",
+              "list_recent_files", "list_shared_drives", "get_shared_drive_metadata", "list_file_revisions"]
+DRIVE_CHANGE = ["create_file", "update_file", "copy_file", "share_file", "trash_file", "request_access"]
+def drive_guard_asks():
+    try: ms = [g["matcher"] for g in json.load(open(f"{G}/hooks/hooks.json"))["hooks"]["PreToolUse"]]
+    except (OSError, ValueError, KeyError, TypeError): ms = []
+    if DRIVE + ".*" not in ms: return fail(f"hooks.json has no matcher {DRIVE}.* (regenerate it with make-hooks.sh)")
+    for t in DRIVE_READ:   # a folder whose record names google-drive (ALL names every shipped service)
+        for m in ("default", "bypassPermissions"):
+            d, why = call(G, DRIVE + t, ALL, mode=m)
+            if d != "none": fail(f"read {t} in {m}: {d} ({why[:60]}), want no decision")
+    for t in DRIVE_CHANGE + ["brand_new_tool_2027", "delete_file", "share_file_publicly", "search_files_and_share"]:
+        for m in MODES[:-1]:
+            d, why = call(G, DRIVE + t, ALL, mode=m)
+            if d != "ask" or t not in why: fail(f"{t} in {m}: {d} ({why[:60]}), want ask naming the tool")
+        d, why = call(G, DRIVE + t, ALL, mode="bypassPermissions")
+        if d != "deny" or t not in why or "bypassPermissions" not in why: fail(f"{t} in bypassPermissions: {d}, want deny naming the tool and mode")
+    # where the folder's record does not name google-drive, its reads ask too
+    for folder in (project("onlyjira", ["jira"]), Q):
+        if call(G, DRIVE + "search_files", folder)[0] != "ask": fail(f"read in a folder that does not name google-drive ({folder}): want ask")
+    # a look-alike connector is not this one, and gets no decision from it
+    for t in ("mcp__claude_ai_Google_Drive2__share_file", "mcp__claude_ai_Google_Docs__create_document"):
+        if call(G, t, ALL)[0] != "none": fail(f"{t}: want no decision (not the Google_Drive connector)")
+
 for t in (guard_matchers_from_recipes, guard_asks, guard_folder_rule, guard_unknown_server, guard_gh_git,
-          guard_gh_refused, guard_other_commands, guard_fail_closed, guard_with_plugin_hooks, guard_docs):
+          guard_gh_refused, guard_other_commands, guard_fail_closed, guard_with_plugin_hooks, guard_docs,
+          drive_guard_asks):
     TEST[0] = t.__name__
     try: t()
     except Exception as e: fail(f"the check could not run ({type(e).__name__}: {e})")
